@@ -1,6 +1,10 @@
 name: Build MinGW and MSYS2 toolchain
 
 on:
+  push:
+    branches:
+      - main
+  pull_request:
   workflow_dispatch:
     inputs:
       msys2_packages_branch:
@@ -15,10 +19,11 @@ defaults:
 
 env:
   MSYS2_REPO: Windows-on-ARM-Experiments/MSYS2-packages
+  MSYS2_BRANCH: ${{ inputs.msys2_packages_branch || 'woarm64' }}
 
 jobs:
   mingw-w64-cross-headers:
-    runs-on: [Windows, X64, self-hosted]
+    runs-on: windows-latest
 
     steps:
       - uses: msys2/setup-msys2@v2
@@ -34,15 +39,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.MSYS2_REPO }}
-          ref: ${{ github.event.inputs.msys2_packages_branch }}
+          ref: ${{ env.MSYS2_BRANCH }}
           path: ${{ github.workspace }}/MSYS2-packages
-
+  
       - name: Build mingw-w64-cross-headers
         working-directory: ${{ github.workspace }}/MSYS2-packages/mingw-w64-cross-headers
         run: makepkg --syncdeps --rmdeps --cleanbuild --noconfirm --noprogressbar --force
 
       - name: Upload mingw-w64-cross-headers
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mingw-w64-cross-headers
           retention-days: 1
@@ -50,7 +55,7 @@ jobs:
 
   mingw-w64-cross-binutils:
     needs: [mingw-w64-cross-headers]
-    runs-on: [Windows, X64, self-hosted]
+    runs-on: windows-latest
 
     steps:
       - uses: msys2/setup-msys2@v2
@@ -66,11 +71,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.MSYS2_REPO }}
-          ref: ${{ github.event.inputs.msys2_packages_branch }}
+          ref: ${{ env.MSYS2_BRANCH}}
           path: ${{ github.workspace }}/MSYS2-packages
 
       - name: Download mingw-w64-cross-headers
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-headers
 
@@ -82,7 +87,7 @@ jobs:
         run: makepkg --syncdeps --rmdeps --cleanbuild --noconfirm --noprogressbar --nocheck --force
 
       - name: Upload mingw-w64-cross-binutils
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mingw-w64-cross-binutils
           retention-days: 1
@@ -90,7 +95,7 @@ jobs:
 
   mingw-w64-cross-gcc-stage1:
     needs: [mingw-w64-cross-headers, mingw-w64-cross-binutils]
-    runs-on: [Windows, X64, self-hosted]
+    runs-on: windows-latest
 
     steps:
       - uses: msys2/setup-msys2@v2
@@ -106,16 +111,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.MSYS2_REPO }}
-          ref: ${{ github.event.inputs.msys2_packages_branch }}
+          ref: ${{ env.MSYS2_BRANCH }}
           path: ${{ github.workspace }}/MSYS2-packages
 
       - name: Download mingw-w64-cross-headers
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-headers
 
       - name: Download mingw-w64-cross-binutils
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-binutils
 
@@ -127,7 +132,7 @@ jobs:
         run: makepkg --syncdeps --rmdeps --cleanbuild --noconfirm --noprogressbar --force
 
       - name: Upload mingw-w64-cross-gcc-stage1
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mingw-w64-cross-gcc-stage1
           retention-days: 1
@@ -135,7 +140,7 @@ jobs:
 
   mingw-w64-cross-windows-default-manifest:
     needs: [mingw-w64-cross-binutils, mingw-w64-cross-gcc-stage1]
-    runs-on: [Windows, X64, self-hosted]
+    runs-on: windows-latest
 
     steps:
       - uses: msys2/setup-msys2@v2
@@ -151,16 +156,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.MSYS2_REPO }}
-          ref: ${{ github.event.inputs.msys2_packages_branch }}
+          ref: ${{ env.MSYS2_BRANCH }}
           path: ${{ github.workspace }}/MSYS2-packages
 
       - name: Download mingw-w64-cross-binutils
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-binutils
 
       - name: Download mingw-w64-cross-gcc-stage1
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-gcc-stage1
 
@@ -172,7 +177,7 @@ jobs:
         run: makepkg --syncdeps --rmdeps --cleanbuild --noconfirm --noprogressbar --force
 
       - name: Upload mingw-w64-cross-windows-default-manifest
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mingw-w64-cross-windows-default-manifest
           retention-days: 1
@@ -185,7 +190,7 @@ jobs:
         mingw-w64-cross-binutils,
         mingw-w64-cross-gcc-stage1,
       ]
-    runs-on: [Windows, X64, self-hosted]
+    runs-on: windows-latest
 
     steps:
       - uses: msys2/setup-msys2@v2
@@ -203,21 +208,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.MSYS2_REPO }}
-          ref: ${{ github.event.inputs.msys2_packages_branch }}
+          ref: ${{ env.MSYS2_BRANCH }}
           path: ${{ github.workspace }}/MSYS2-packages
 
       - name: Download mingw-w64-cross-headers
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-headers
 
       - name: Download mingw-w64-cross-binutils
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-binutils
 
       - name: Download mingw-w64-cross-gcc-stage1
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-gcc-stage1
 
@@ -235,7 +240,7 @@ jobs:
         run: makepkg --syncdeps --rmdeps --cleanbuild --noconfirm --noprogressbar --force
 
       - name: Upload mingw-w64-cross-crt
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mingw-w64-cross-crt
           retention-days: 1
@@ -249,7 +254,7 @@ jobs:
         mingw-w64-cross-gcc-stage1,
         mingw-w64-cross-crt,
       ]
-    runs-on: [Windows, X64, self-hosted]
+    runs-on: windows-latest
 
     steps:
       - uses: msys2/setup-msys2@v2
@@ -265,26 +270,26 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.MSYS2_REPO }}
-          ref: ${{ github.event.inputs.msys2_packages_branch }}
+          ref: ${{ env.MSYS2_BRANCH }}
           path: ${{ github.workspace }}/MSYS2-packages
 
       - name: Download mingw-w64-cross-headers
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-headers
 
       - name: Download mingw-w64-cross-binutils
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-binutils
 
       - name: Download mingw-w64-cross-gcc-stage1
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-gcc-stage1
 
       - name: Download mingw-w64-cross-crt
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-crt
 
@@ -296,7 +301,7 @@ jobs:
         run: makepkg --syncdeps --rmdeps --cleanbuild --noconfirm --noprogressbar --force
 
       - name: Upload mingw-w64-cross-winpthreads
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mingw-w64-cross-winpthreads
           retention-days: 1
@@ -311,7 +316,7 @@ jobs:
         mingw-w64-cross-crt,
         mingw-w64-cross-winpthreads,
       ]
-    runs-on: [Windows, X64, self-hosted]
+    runs-on: windows-latest
 
     steps:
       - uses: msys2/setup-msys2@v2
@@ -327,31 +332,31 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.MSYS2_REPO }}
-          ref: ${{ github.event.inputs.msys2_packages_branch }}
+          ref: ${{ env.MSYS2_BRANCH }}
           path: ${{ github.workspace }}/MSYS2-packages
 
       - name: Download mingw-w64-cross-headers
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-headers
 
       - name: Download mingw-w64-cross-binutils
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-binutils
 
       - name: Download mingw-w64-cross-windows-default-manifest
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-windows-default-manifest
 
       - name: Download mingw-w64-cross-crt
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-crt
 
       - name: Download mingw-w64-cross-winpthreads
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-winpthreads
 
@@ -363,7 +368,7 @@ jobs:
         run: makepkg --syncdeps --rmdeps --cleanbuild --noconfirm --noprogressbar --force
 
       - name: Upload mingw-w64-cross-gcc
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mingw-w64-cross-gcc
           retention-days: 1
@@ -386,37 +391,37 @@ jobs:
       - uses: msys2/setup-msys2@v2
 
       - name: Download mingw-w64-cross-headers
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-headers
 
       - name: Download mingw-w64-cross-binutils
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-binutils
 
       - name: Download mingw-w64-cross-gcc-stage1
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-gcc-stage1
 
       - name: Download mingw-w64-cross-windows-default-manifest
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-windows-default-manifest
 
       - name: Download mingw-w64-cross-crt
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-crt
 
       - name: Download mingw-w64-cross-winpthreads
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-winpthreads
 
       - name: Download mingw-w64-cross-gcc
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-gcc
 
@@ -442,6 +447,7 @@ jobs:
           path: "."
 
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: [repository]
     runs-on: ubuntu-latest
 
@@ -460,10 +466,10 @@ jobs:
 
     steps:
       - name: Setup GitHub Pages
-        uses: actions/configure-pages@v3
+        uses: actions/configure-pages@v4
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
         with:
           artifact_name: woarm64-msys2-repository
