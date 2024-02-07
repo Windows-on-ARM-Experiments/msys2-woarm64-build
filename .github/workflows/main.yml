@@ -473,3 +473,7 @@ jobs:
         uses: actions/deploy-pages@v4
         with:
           artifact_name: woarm64-msys2-repository
+
+  check-repository:
+    needs: [deploy]
+    uses: ./.github/workflows/check-repository.yml
