@@ -1,0 +1,49 @@
+name: Check MSYS2 repository
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MSYS
+          update: true
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        shell: msys2 {0}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/install-toolchain.sh
+
+      - name: Build hello-world.exe
+        shell: msys2 {0}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/build-hello-world.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hello-world
+          path: hello-world.exe
+
+  test:
+    needs: [build]
+    runs-on: [Windows, GCC, ARM64]
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: hello-world
+          path: ${{ github.workspace }}\artifacts
+
+      - name: Run hello-world.exe
+        run: |
+          ls ${{ github.workspace }}\artifacts
+          ${{ github.workspace }}\artifacts\hello-world.exe
