@@ -312,6 +312,7 @@ jobs:
       [
         mingw-w64-cross-headers,
         mingw-w64-cross-binutils,
+        mingw-w64-cross-gcc-stage1,
         mingw-w64-cross-windows-default-manifest,
         mingw-w64-cross-crt,
         mingw-w64-cross-winpthreads,
@@ -344,6 +345,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: mingw-w64-cross-binutils
+
+      - name: Download mingw-w64-cross-gcc-stage1
+        uses: actions/download-artifact@v4
+        with:
+          name: mingw-w64-cross-gcc-stage1
 
       - name: Download mingw-w64-cross-windows-default-manifest
         uses: actions/download-artifact@v4
