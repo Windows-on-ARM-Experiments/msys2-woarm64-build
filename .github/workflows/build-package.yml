@@ -1,0 +1,87 @@
+name: Build MSYS2 package
+
+on:
+  workflow_call:
+    inputs:
+      package_name:
+        description: "Package name to build"
+        type: string
+      needs:
+        description: "Parent workflow job dependencies"
+        type: string
+      dependencies:
+        description: "Install additional dependencies"
+        type: string
+        default: ""
+      msys2_packages_branch:
+        description: "MSYS2-packages branch to build"
+        type: string
+        default: "woarm64"
+
+defaults:
+  run:
+    shell: msys2 {0}
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MSYS
+          update: true
+
+      - name: Install dependencies
+        run: |
+          pacman -S --noconfirm \
+            base-devel \
+            git \
+            mingw-w64-x86_64-github-cli \
+            mingw-w64-x86_64-jq \
+            ${{ inputs.dependencies }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout MSYS2 packages repository
+        uses: actions/checkout@v4
+        with:
+          repository: Windows-on-ARM-Experiments/MSYS2-packages
+          ref: ${{ inputs.msys2_packages_branch }}
+          path: ${{ github.workspace }}/MSYS2-packages
+
+      - name: Download artifacts
+        if: ${{ inputs.needs }}
+        run: |
+          for need in `echo '${{ inputs.needs }}' | /mingw64/bin/jq 'keys|join(" ")' | sed 's/"//g'`; do
+            echo "Downloading $need artifact."
+            /mingw64/bin/gh run download ${{ github.run_id }} -n $need
+          done
+
+      - name: Install artifacts
+        if: ${{ inputs.needs }}
+        run: |
+          pacman -U --noconfirm *.pkg.tar.zst
+
+      - name: Copy missing headers
+        if: ${{ inputs.package_name == 'mingw-w64-cross-crt' }}
+        run: |
+          cp /opt/x86_64-w64-mingw32/include/pthread_signal.h /opt/aarch64-w64-mingw32/include/
+          cp /opt/x86_64-w64-mingw32/include/pthread_unistd.h /opt/aarch64-w64-mingw32/include/
+          cp /opt/x86_64-w64-mingw32/include/pthread_time.h /opt/aarch64-w64-mingw32/include/
+
+      - name: Build ${{ inputs.package_name }}
+        working-directory: ${{ github.workspace }}/MSYS2-packages/${{ inputs.package_name }}
+        run: |
+          makepkg --syncdeps --rmdeps --cleanbuild --noconfirm --noprogressbar --nocheck --force
+
+      - name: Upload ${{ inputs.package_name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.package_name }}
+          retention-days: 1
+          path: ${{ github.workspace }}/MSYS2-packages/${{ inputs.package_name }}/*.pkg.tar.zst
