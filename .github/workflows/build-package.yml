@@ -1,0 +1,94 @@
+name: Build MSYS2 package
+
+on:
+  workflow_call:
+    inputs:
+      package_name:
+        description: "Package name to build"
+        type: string
+      needs:
+        description: "Parent workflow job dependencies"
+        type: string
+      dependencies:
+        description: "Install additional dependencies"
+        type: string
+        default: ""
+      packages_repository:
+        description: "MSYS2 packages repository to build from"
+        type: string
+        default: "Windows-on-ARM-Experiments/MSYS2-packages"
+      packages_branch:
+        description: "MSYS2 packages branch to build from"
+        type: string
+        default: "woarm64"
+
+defaults:
+  run:
+    shell: msys2 {0}
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ contains(inputs.packages_repository, 'MINGW') && 'MINGW64' || 'MSYS' }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pacman -S --noconfirm \
+            git \
+            mingw-w64-x86_64-github-cli \
+            mingw-w64-x86_64-jq \
+            base-devel \
+            ${{ inputs.dependencies }}
+
+      - name: Download artifacts
+        if: ${{ inputs.needs }}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/download-artifacts.sh ${{ github.run_id }} '${{ inputs.needs }}'
+
+      - name: Install artifacts
+        if: ${{ inputs.needs }}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/install-artifacts.sh
+
+      - name: Copy missing headers for mingw-w64-cross-crt
+        if: ${{ inputs.package_name == 'mingw-w64-cross-crt' }}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/pthread-headers-hack-before.sh
+
+      - name: Checkout ${{ inputs.packages_repository }} repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.packages_repository }}
+          ref: ${{ inputs.packages_branch }}
+          sparse-checkout: ${{ inputs.package_name }}
+          path: ${{ github.workspace }}/packages
+
+      - name: Build ${{ inputs.package_name }}
+        working-directory: ${{ github.workspace }}/packages/${{ inputs.package_name }}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/build-package.sh ${{ inputs.packages_repository }}
+
+      - name: Upload ${{ inputs.package_name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.package_name }}
+          retention-days: 1
+          path: ${{ github.workspace }}/packages/${{ inputs.package_name }}/*.pkg.tar.zst
+
+      - name: Upload build folder
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.package_name }}-build
+          retention-days: 1
+          path: ${{ github.workspace }}/packages/${{ inputs.package_name }}/src
