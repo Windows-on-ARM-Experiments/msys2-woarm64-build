@@ -42,6 +42,11 @@ pacman -S mingw-w64-cross-gcc
 
 to install x64 host MinGW compiler with `aarch64-w64-mingw32` target support.
 
+## Building Packages Locally
+
+In case one would like to build all the packages locally, there is a `build.sh` script. It expects
+that all the dependency repositories are cloned in the parent folder of this repository's folder.
+
 ## Dependencies Chart
 
 The color of the blocks indicates whether the package recipes exist and/or succeed to build
