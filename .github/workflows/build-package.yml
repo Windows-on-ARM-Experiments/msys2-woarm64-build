@@ -51,12 +51,29 @@ jobs:
           pacman -S --noconfirm \
             base-devel \
             git \
+            ccache \
             mingw-w64-x86_64-github-cli \
             mingw-w64-x86_64-jq \
             ${{ inputs.dependencies }}
 
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Enable Ccache
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/enable-ccache.sh
+          #CCACHE_PATH=`cygpath "${{ github.workspace }}"`/ccache
+          CCACHE_PATH=~/ccache
+          echo "CCACHE_PATH=$CCACHE_PATH" >> $GITHUB_ENV
+          echo $CCACHE_PATH
+          mkdir $CCACHE_PATH
+
+      - name: Ccache
+        id: cache-ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/ccache
+          key: main-ccache
 
       - name: Checkout ${{ inputs.packages_repository }} repository
         uses: actions/checkout@v4
@@ -83,6 +100,7 @@ jobs:
       - name: Build ${{ inputs.package_name }}
         working-directory: ${{ github.workspace }}/packages/${{ inputs.package_name }}
         run: |
+          ls -al $CCACHE_PATH
           makepkg --syncdeps --rmdeps --cleanbuild --noconfirm --noprogressbar --nocheck --force
 
       - name: Upload ${{ inputs.package_name }}
