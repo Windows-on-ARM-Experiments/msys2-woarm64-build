@@ -21,6 +21,10 @@ on:
         description: "MSYS2 packages branch to build from"
         type: string
         default: "woarm64"
+      cross_compile:
+        description: "Use cross-compiler for the package build"
+        type: boolean
+        default: false
 
 defaults:
   run:
@@ -53,10 +57,13 @@ jobs:
             git \
             mingw-w64-x86_64-github-cli \
             mingw-w64-x86_64-jq \
+            ${{ inputs.cross_compile && 'mingw-w64-cross-gcc' || '' }} \
             ${{ inputs.dependencies }}
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Setup cross-compilation environment
+        if: ${{ inputs.cross_compile }}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-cross-compilation.sh
 
       - name: Checkout ${{ inputs.packages_repository }} repository
         uses: actions/checkout@v4
@@ -83,7 +90,13 @@ jobs:
       - name: Build ${{ inputs.package_name }}
         working-directory: ${{ github.workspace }}/packages/${{ inputs.package_name }}
         run: |
-          makepkg --syncdeps --rmdeps --cleanbuild --noconfirm --noprogressbar --nocheck --force
+            if [[ "${{ inputs.packages_repository }}" == *MINGW* ]]; then
+              command="makepkg-mingw"
+            else
+              command="makepkg"
+            fi
+            MINGW_ARCH=mingw64 \
+              $command --syncdeps --rmdeps --cleanbuild --skippgpcheck --noconfirm --noprogressbar --nocheck --force
 
       - name: Upload ${{ inputs.package_name }}
         uses: actions/upload-artifact@v4
