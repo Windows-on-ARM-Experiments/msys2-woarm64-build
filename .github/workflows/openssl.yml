@@ -1,0 +1,21 @@
+name: Build MinGW OpenSSL using MSYS2 toolchain
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      mingw_packages_branch:
+        description: "MINGW-packages branch to build"
+        type: string
+        required: false
+        default: "woarm64"
+
+jobs:
+  mingw-w64-openssl:
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-openssl
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
+      dependencies: mingw-w64-cross-zlib
+      cross_compile: true

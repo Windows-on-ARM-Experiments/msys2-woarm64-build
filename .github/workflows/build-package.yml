@@ -13,10 +13,18 @@ on:
         description: "Install additional dependencies"
         type: string
         default: ""
-      msys2_packages_branch:
-        description: "MSYS2-packages branch to build"
+      packages_repository:
+        description: "MSYS2 packages repository to build from"
+        type: string
+        default: "Windows-on-ARM-Experiments/MSYS2-packages"
+      packages_branch:
+        description: "MSYS2 packages branch to build from"
         type: string
         default: "woarm64"
+      cross_compile:
+        description: "Use cross-compiler for the package build"
+        type: boolean
+        default: false
 
 defaults:
   run:
@@ -35,6 +43,13 @@ jobs:
           msystem: MSYS
           update: true
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup packages repository
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-repository.sh
+
       - name: Install dependencies
         run: |
           pacman -S --noconfirm \
@@ -42,17 +57,20 @@ jobs:
             git \
             mingw-w64-x86_64-github-cli \
             mingw-w64-x86_64-jq \
+            ${{ inputs.cross_compile && 'mingw-w64-cross-gcc' || '' }} \
             ${{ inputs.dependencies }}
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Setup cross-compilation environment
+        if: ${{ inputs.cross_compile }}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-cross-compilation.sh
 
-      - name: Checkout MSYS2 packages repository
+      - name: Checkout ${{ inputs.packages_repository }} repository
         uses: actions/checkout@v4
         with:
-          repository: Windows-on-ARM-Experiments/MSYS2-packages
-          ref: ${{ inputs.msys2_packages_branch }}
-          path: ${{ github.workspace }}/MSYS2-packages
+          repository: ${{ inputs.packages_repository }}
+          ref: ${{ inputs.packages_branch }}
+          path: ${{ github.workspace }}/packages
 
       - name: Download artifacts
         if: ${{ inputs.needs }}
@@ -67,7 +85,7 @@ jobs:
         run: |
           pacman -U --noconfirm *.pkg.tar.zst
 
-      - name: Copy missing headers
+      - name: Copy missing headers for mingw-w64-cross-crt
         if: ${{ inputs.package_name == 'mingw-w64-cross-crt' }}
         run: |
           cp /opt/x86_64-w64-mingw32/include/pthread_signal.h /opt/aarch64-w64-mingw32/include/
@@ -75,13 +93,19 @@ jobs:
           cp /opt/x86_64-w64-mingw32/include/pthread_time.h /opt/aarch64-w64-mingw32/include/
 
       - name: Build ${{ inputs.package_name }}
-        working-directory: ${{ github.workspace }}/MSYS2-packages/${{ inputs.package_name }}
+        working-directory: ${{ github.workspace }}/packages/${{ inputs.package_name }}
         run: |
-          makepkg --syncdeps --rmdeps --cleanbuild --noconfirm --noprogressbar --nocheck --force
+            if [[ "${{ inputs.packages_repository }}" == *MINGW* ]]; then
+              command="makepkg-mingw"
+            else
+              command="makepkg"
+            fi
+            MINGW_ARCH=mingw64 \
+              $command --syncdeps --rmdeps --cleanbuild --skippgpcheck --noconfirm --noprogressbar --nocheck --force
 
       - name: Upload ${{ inputs.package_name }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.package_name }}
           retention-days: 1
-          path: ${{ github.workspace }}/MSYS2-packages/${{ inputs.package_name }}/*.pkg.tar.zst
+          path: ${{ github.workspace }}/packages/${{ inputs.package_name }}/*.pkg.tar.zst

@@ -21,9 +21,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup packages repository
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-repository.sh
+
       - name: Install toolchain
         run: |
-          `cygpath "${{ github.workspace }}"`/.github/scripts/install-toolchain.sh
+          pacman -S mingw-w64-cross-gcc --noconfirm
 
       - name: Build hello-world.exe
         run: |
