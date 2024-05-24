@@ -1,0 +1,67 @@
+diff --git a/etc/makepkg_mingw.conf b/etc/makepkg_mingw.conf
+--- a/etc/makepkg_mingw.conf
++++ b/etc/makepkg_mingw.conf
+@@ -34,15 +34,17 @@
+ #
+ 
+ if [[ "$MSYSTEM" == "MINGW64" ]]; then
+-  CARCH="x86_64"
++  CARCH="aarch64"
+   CHOST="x86_64-w64-mingw32"
+   MINGW_CHOST="x86_64-w64-mingw32"
+   MINGW_PREFIX="/mingw64"
+   MINGW_PACKAGE_PREFIX="mingw-w64-x86_64"
+-  CC="gcc"
+-  CXX="g++"
++  CC="aarch64-w64-mingw32-gcc"
++  CXX="aarch64-w64-mingw32-g++"
++  STRIP="aarch64-w64-mingw32-strip"
++  OBJDUMP="aarch64-w64-mingw32-objdump"
+   CPPFLAGS="-D__USE_MINGW_ANSI_STDIO=1"
+-  CFLAGS="-march=nocona -msahf -mtune=generic -O2 -pipe -Wp,-D_FORTIFY_SOURCE=2 -fstack-protector-strong"
++  CFLAGS="-O2 -pipe -Wp,-D_FORTIFY_SOURCE=2 -fstack-protector-strong"
+   CXXFLAGS="$CFLAGS"
+   LDFLAGS=""
+ elif [[ "$MSYSTEM" == "MINGW32" ]]; then
+diff --git a/etc/profile b/etc/profile
+--- a/etc/profile
++++ b/etc/profile
+@@ -49,7 +49,7 @@
+ case "${MSYSTEM}" in
+ MINGW*|CLANG*|UCRT*)
+   MINGW_MOUNT_POINT="${MINGW_PREFIX}"
+-  PATH="${MINGW_MOUNT_POINT}/bin:${MSYS2_PATH}${ORIGINAL_PATH:+:${ORIGINAL_PATH}}"
++  PATH="/opt/bin:${MINGW_MOUNT_POINT}/bin:${MSYS2_PATH}${ORIGINAL_PATH:+:${ORIGINAL_PATH}}"
+   PKG_CONFIG_PATH="${MINGW_MOUNT_POINT}/lib/pkgconfig:${MINGW_MOUNT_POINT}/share/pkgconfig"
+   PKG_CONFIG_SYSTEM_INCLUDE_PATH="${MINGW_MOUNT_POINT}/include"
+   PKG_CONFIG_SYSTEM_LIBRARY_PATH="${MINGW_MOUNT_POINT}/lib"
+diff --git a/usr/share/makepkg/tidy/strip.sh b/usr/share/makepkg/tidy/strip.sh
+--- a/usr/share/makepkg/tidy/strip.sh
++++ b/usr/share/makepkg/tidy/strip.sh
+@@ -85,7 +85,7 @@
+ strip_file(){
+ 	local binary=$1; shift
+ 	local tempfile=$(mktemp "$binary.XXXXXX")
+-	if strip "$@" "$binary" -o "$tempfile"; then
++	if $STRIP "$@" "$binary" -o "$tempfile"; then
+ 		cat "$tempfile" > "$binary"
+ 	fi
+ 	rm -f "$tempfile"
+@@ -95,7 +95,7 @@
+ 	local binary=$1;
+ 
+ 	local tempfile=$(mktemp "$binary.XXXXXX")
+-	if strip -R .gnu.lto_* -R .gnu.debuglto_* -N __gnu_lto_v1 "$binary" -o "$tempfile"; then
++	if $STRIP -R .gnu.lto_* -R .gnu.debuglto_* -N __gnu_lto_v1 "$binary" -o "$tempfile"; then
+ 		cat "$tempfile" > "$binary"
+ 	fi
+ 	rm -f "$tempfile"
+@@ -176,7 +176,7 @@
+ 				case "${binary##*/}" in
+ 				*.dll|*.exe|*.sfx|*.so|*.so.[0-9]*|*.oct|*.cmxs) ;;
+ 				# make sure this isn't some oddly named DLL
+-				*)	if LANG=en_US.UTF-8 LC_ALL=C objdump -f "${binary}" | grep -Eq '^start address 0x(0000000[01])?00401[0-9a-e][0-9a-e]0'
++				*)	if LANG=en_US.UTF-8 LC_ALL=C $OBJDUMP -f "${binary}" | grep -Eq '^start address 0x(0000000[01])?00401[0-9a-e][0-9a-e]0'
+ 					then
+ 						mv "${binary}" "${binary}.exe"
+ 						binary+=.exe

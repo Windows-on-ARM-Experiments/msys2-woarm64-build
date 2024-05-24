@@ -1,0 +1,20 @@
+name: Build MinGW OpenBLAS using MSYS2 toolchain
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      mingw_packages_branch:
+        description: "MINGW-packages branch to build"
+        type: string
+        required: false
+        default: "woarm64"
+
+jobs:
+  mingw-w64-openblas:
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-openblas
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
+      cross_compile: true
