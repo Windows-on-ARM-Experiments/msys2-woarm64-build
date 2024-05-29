@@ -10,13 +10,13 @@ if [ "$CLEAN_BUILD" = 1 ] ; then
   MAKEPKG_OPTIONS="$MAKEPKG_OPTIONS --cleanbuild"
 fi
 
-pacman -R mingw-w64-cross-gcc --noconfirm || true
-pacman -R mingw-w64-cross-winpthreads --noconfirm || true
-pacman -R mingw-w64-cross-crt --noconfirm || true
-pacman -R mingw-w64-cross-windows-default-manifest --noconfirm || true
-pacman -R mingw-w64-cross-gcc-stage1 --noconfirm || true
-pacman -R mingw-w64-cross-binutils --noconfirm || true
-pacman -R mingw-w64-cross-headers --noconfirm || true
+pacman -R --noconfirm mingw-w64-cross-gcc || true
+pacman -R --noconfirm mingw-w64-cross-winpthreads || true
+pacman -R --noconfirm mingw-w64-cross-crt || true
+pacman -R --noconfirm mingw-w64-cross-windows-default-manifest || true
+pacman -R --noconfirm mingw-w64-cross-gcc-stage1 || true
+pacman -R --noconfirm mingw-w64-cross-binutils || true
+pacman -R --noconfirm mingw-w64-cross-headers || true
 
 pacman -S --noconfirm base-devel
 
@@ -47,9 +47,7 @@ echo "::endgroup::"
 echo "::group::Build mingw-w64-cross-crt"
   pushd ../MSYS2-packages/mingw-w64-cross-crt
     pacman -S --noconfirm mingw-w64-cross-winpthreads
-    cp /opt/x86_64-w64-mingw32/include/pthread_signal.h /opt/aarch64-w64-mingw32/include/
-    cp /opt/x86_64-w64-mingw32/include/pthread_unistd.h /opt/aarch64-w64-mingw32/include/
-    cp /opt/x86_64-w64-mingw32/include/pthread_time.h /opt/aarch64-w64-mingw32/include/
+    .github/scripts/pthread-header-fix.sh
 
     makepkg $MAKEPKG_OPTIONS
 
@@ -61,6 +59,10 @@ echo "::endgroup::"
 
 echo "::group::Build mingw-w64-cross-winpthreads"
   pushd ../MSYS2-packages/mingw-w64-cross-winpthreads
+    rm -f /opt/aarch64-w64-mingw32/include/pthread_signal.h
+    rm -f /opt/aarch64-w64-mingw32/include/pthread_unistd.h
+    rm -f /opt/aarch64-w64-mingw32/include/pthread_time.h
+
     makepkg $MAKEPKG_OPTIONS
   popd
 echo "::endgroup::"
@@ -68,7 +70,7 @@ echo "::endgroup::"
 echo "::group::Build mingw-w64-cross-gcc"
   pushd ../MSYS2-packages/mingw-w64-cross-gcc
     makepkg ${MAKEPKG_OPTIONS//--install/}
-    pacman -R mingw-w64-cross-gcc-stage1 --noconfirm || true
-    pacman -U *.pkg.tar.zst --noconfirm
+    pacman -Ry mingw-w64-cross-gcc-stage1 || true
+    pacman -Uy *.pkg.tar.zst
   popd
 echo "::endgroup::"

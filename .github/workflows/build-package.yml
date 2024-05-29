@@ -21,6 +21,10 @@ on:
         description: "MSYS2 packages branch to build from"
         type: string
         default: "woarm64"
+      runs_on_arm64:
+        description: "Whether Arm64 runner is required"
+        type: boolean
+        default: false
 
 defaults:
   run:
@@ -31,16 +35,55 @@ env:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: [Windows, ARM64, Blackhex]
 
     steps:
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: MSYS
-          update: true
+      - name: Kill hanging processes
+        if: ${{ inputs.runs_on_arm64 }}
+        shell: cmd
+        run: |
+          tasklist
+          taskkill /t /f /im cc1.exe
+          taskkill /t /f /im pacman.exe
+          taskkill /t /f /im make.exe
+          taskkill /t /f /im wc.exe
+          taskkill /t /f /im gpg.exe
+          taskkill /t /f /im gpg-agent.exe
+          taskkill /t /f /im bash.exe
+          taskkill /t /f /im sh.exe
+          cd "${{ github.workspace }}"
+          rmdir /s /q packages
+          exit 0
+
+      - name: Fix Git long paths
+        if: ${{ inputs.runs_on_arm64 }}
+        shell: powershell
+        run: |
+          git config --global core.longpaths true
+
+      - name: Add Git to PATH
+        shell: powershell
+        run: |
+          Write-Output "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ inputs.runs_on_arm64 && 'MINGW64' || 'MSYS' }}
+          update: false
+          cache: false
+
+      - name: Pacman hang workaround
+        if: ${{ inputs.runs_on_arm64 }}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/pacman-workaround.sh
+
+      - name: Setup cross-compilation environment
+        if: ${{ inputs.runs_on_arm64 }}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-cross-compilation.sh
 
       - name: Setup packages repository
         run: |
@@ -49,21 +92,25 @@ jobs:
       - name: Install dependencies
         run: |
           pacman -S --noconfirm \
-            base-devel \
             git \
             mingw-w64-x86_64-github-cli \
             mingw-w64-x86_64-jq \
+            base-devel \
+            ${{ inputs.runs_on_arm64 && 'mingw-w64-cross-gcc mingw-w64-x86_64-ccache' || ' ccache' }} \
             ${{ inputs.dependencies }}
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Enable Ccache
+        id: enable-ccache
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/enable-ccache.sh
 
-      - name: Checkout ${{ inputs.packages_repository }} repository
-        uses: actions/checkout@v4
+      - name: Ccache
+        uses: actions/cache@v4
         with:
-          repository: ${{ inputs.packages_repository }}
-          ref: ${{ inputs.packages_branch }}
-          path: ${{ github.workspace }}/packages
+          path: ${{ github.workspace }}/ccache
+          key: main-ccache-${{ steps.enable-ccache.outputs.timestamp }}
+          restore-keys: main-ccache-
+          save-always: true
 
       - name: Download artifacts
         if: ${{ inputs.needs }}
@@ -80,14 +127,32 @@ jobs:
         run: |
           `cygpath "${{ github.workspace }}"`/.github/scripts/pthread-headers-hack.sh
 
+      - name: Checkout ${{ inputs.packages_repository }} repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.packages_repository }}
+          ref: ${{ inputs.packages_branch }}
+          sparse-checkout: ${{ inputs.package_name }}
+          path: ${{ github.workspace }}/packages
+
       - name: Build ${{ inputs.package_name }}
         working-directory: ${{ github.workspace }}/packages/${{ inputs.package_name }}
         run: |
+          /mingw64/bin/ccache -svv  || true
           `cygpath "${{ github.workspace }}"`/.github/scripts/build-package.sh ${{ inputs.packages_repository }}
+          /mingw64/bin/ccache -svv || true
 
       - name: Upload ${{ inputs.package_name }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.package_name }}
-          retention-days: 1
+          retention-days: 3
           path: ${{ github.workspace }}/packages/${{ inputs.package_name }}/*.pkg.tar.zst
+
+      - name: Upload build folder
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.package_name }}-build
+          retention-days: 1
+          path: ${{ github.workspace }}/packages/${{ inputs.package_name }}/src
