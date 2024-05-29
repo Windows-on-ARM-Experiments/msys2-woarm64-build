@@ -21,4 +21,8 @@ pushd /
     patch -p1 -b -i "$DIR/patches/ccache/0002-makepkg-mingw.patch"
     cat /etc/makepkg_mingw.conf
   echo "::endgroup::"
+
+  echo "::group::Add aarch64 toolchain to ccache"
+    patch -p1 -b -i "$DIR/patches/ccache/0003-aarch64-toolchain.patch"
+  echo "::endgroup::"
 popd
