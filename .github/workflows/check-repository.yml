@@ -7,6 +7,11 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
     steps:
       - uses: msys2/setup-msys2@v2
         with:
@@ -16,13 +21,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install toolchain
-        shell: msys2 {0}
+      - name: Setup packages repository
         run: |
-          `cygpath "${{ github.workspace }}"`/.github/scripts/install-toolchain.sh
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-repository.sh
+
+      - name: Install toolchain
+        run: |
+          pacman -S mingw-w64-cross-gcc --noconfirm
 
       - name: Build hello-world.exe
-        shell: msys2 {0}
         run: |
           `cygpath "${{ github.workspace }}"`/.github/scripts/build-hello-world.sh
 
