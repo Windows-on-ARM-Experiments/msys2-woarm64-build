@@ -12,6 +12,11 @@ on:
         type: string
         required: false
         default: "woarm64"
+      mingw_packages_branch:
+        description: "MINGW-packages branch to build"
+        type: string
+        required: false
+        default: "woarm64"
 
 jobs:
   mingw-cross-toolchain:
@@ -20,9 +25,18 @@ jobs:
     with:
       msys2_packages_branch: ${{ inputs.msys2_packages_branch || 'woarm64' }}
 
+  mingw-native-toolchain:
+    name: MinGW native toolchain
+    uses: ./.github/workflows/mingw-native-toolchain.yml
+    with:
+      mingw_packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+
   repository:
     name: Create MSYS2 repository
-    needs: mingw-cross-toolchain
+    needs: [
+      mingw-cross-toolchain,
+      mingw-native-toolchain
+    ]
     runs-on: windows-latest
 
     defaults:
@@ -33,7 +47,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - uses: msys2/setup-msys2@v2
+      - uses: Windows-on-ARM-Experiments/setup-msys2@main
         with:
           msystem: MSYS
           update: true
@@ -50,32 +64,28 @@ jobs:
 
       - name: Download artifacts
         run: |
-          `cygpath "${{ github.workspace }}"`/.github/scripts/download-artifacts.sh ${{ github.run_id }} \
-            '${{ needs.mingw-cross-toolchain.outputs.artifacts }}'
+          `cygpath "${{ github.workspace }}"`/.github/scripts/download-artifacts.sh \
+            ${{ github.run_id }} \
+            '${{ needs.mingw-cross-toolchain.outputs.artifacts }}' \
+            '${{ needs.mingw-native-toolchain.outputs.artifacts }}'
   
-      - name: Setup MSYS2 packages repository
+      - name: Create MSYS2 packages repository
         run: |
-          mkdir aarch64
-          mkdir x86_64
-
-          mv -f *-x86_64.pkg.tar.zst x86_64/
-
-          cd x86_64
-          repo-add woarm64.db.tar.gz *.pkg.tar.zst
+          `cygpath "${{ github.workspace }}"`/.github/scripts/create-repository.sh
 
       - name: Create index.html
         run: |
-          echo "<!DOCTYPE html><head></head><body></body>" > index.html
+          echo "<!DOCTYPE html><head></head><body></body>" > repository/index.html
 
       - name: Upload woarm64-msys2-repository
         uses: actions/upload-pages-artifact@v3
         with:
           name: woarm64-msys2-repository
-          retention-days: 1
-          path: "."
+          retention-days: 7
+          path: repository
 
   deploy:
-    if: github.ref == 'refs/heads/main'
+    #if: github.ref == 'refs/heads/main'
     name: Deploy MSYS2 repository
     needs: repository
     runs-on: ubuntu-latest

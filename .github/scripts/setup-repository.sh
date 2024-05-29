@@ -13,7 +13,7 @@ pushd /
   echo "::endgroup::"
 
   echo "::group::Add WoArm64 repository"
-    patch -p1 -b -i "$DIR/patches/pacman/0001-add-woarm64-repository.patch"
+    patch -p1 -b -i "$DIR/patches/pacman/0002-add-woarm64-repositories.patch"
   echo "::endgroup::"
 
   echo "::group::Update packages database"

@@ -21,12 +21,18 @@ ARGUMENTS="--syncdeps \
     $([ "$CLEAN_BUILD" = 1 ] && echo "--cleanbuild" || echo "") \
     $([ "$INSTALL_PACKAGE" = 1 ] && echo "--install" || echo "")"
 
-ccache -svv  || true
+echo "::group::Ccache statistics before build"
+    ccache -svv  || true
+echo "::endgroup::"
 
-if [[ "$PACKAGE_REPOSITORY" == *MINGW* ]]; then
-    makepkg-mingw $ARGUMENTS
-else
-    makepkg $ARGUMENTS
-fi
+echo "::group::Build package"
+    if [[ "$PACKAGE_REPOSITORY" == *MINGW* ]]; then
+        makepkg-mingw $ARGUMENTS
+    else
+        makepkg $ARGUMENTS
+    fi
+echo "::endgroup::"
 
-ccache -svv || true
+echo "::group::Ccache statistics after build"
+    ccache -svv || true
+echo "::endgroup::"
