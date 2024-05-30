@@ -11,7 +11,7 @@ on:
         description: "MSYS2-packages branch to build"
         type: string
         required: false
-        default: "woarm64"
+        default: "rebase-test"
 
 defaults:
   run:
@@ -19,7 +19,7 @@ defaults:
 
 env:
   MSYS2_REPO: Windows-on-ARM-Experiments/MSYS2-packages
-  MSYS2_BRANCH: ${{ inputs.msys2_packages_branch || 'woarm64' }}
+  MSYS2_BRANCH: ${{ inputs.msys2_packages_branch || 'rebase-test' }}
 
 jobs:
   mingw-w64-cross-headers:
