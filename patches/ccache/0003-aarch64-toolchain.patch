@@ -1,0 +1,96 @@
+--- a/mingw64/lib/ccache/bin/c++
++++ /dev/null
+@@ -1,3 +0,0 @@
+-#!/bin/bash
+-
+-ccache /mingw64/bin/c++ "$@"
+--- a/mingw64/lib/ccache/bin/cc
++++ /dev/null
+@@ -1,3 +0,0 @@
+-#!/bin/bash
+-
+-ccache /mingw64/bin/cc "$@"
+--- a/mingw64/lib/ccache/bin/cpp
++++ /dev/null
+@@ -1,3 +0,0 @@
+-#!/bin/bash
+-
+-ccache /mingw64/bin/cpp "$@"
+--- a/mingw64/lib/ccache/bin/g++
++++ /dev/null
+@@ -1,3 +0,0 @@
+-#!/bin/bash
+-
+-ccache /mingw64/bin/g++ "$@"
+--- a/mingw64/lib/ccache/bin/gcc
++++ /dev/null
+@@ -1,3 +0,0 @@
+-#!/bin/bash
+-
+-ccache /mingw64/bin/gcc "$@"
+--- a/mingw64/lib/ccache/bin/x86_64-w64-mingw32-c++
++++ /dev/null
+@@ -1,3 +0,0 @@
+-#!/bin/bash
+-
+-ccache /mingw64/bin/x86_64-w64-mingw32-c++ "$@"
+--- a/mingw64/lib/ccache/bin/x86_64-w64-mingw32-g++
++++ /dev/null
+@@ -1,3 +0,0 @@
+-#!/bin/bash
+-
+-ccache /mingw64/bin/x86_64-w64-mingw32-g++ "$@"
+--- a/mingw64/lib/ccache/bin/x86_64-w64-mingw32-gcc
++++ /dev/null
+@@ -1,3 +0,0 @@
+-#!/bin/bash
+-
+-ccache /mingw64/bin/x86_64-w64-mingw32-gcc "$@"
+--- /dev/null
++++ b/mingwarm64/lib/ccache/bin/aarch64-w64-mingw32-c++
+@@ -0,0 +1,3 @@
++#!/bin/bash
++
++ccache /opt/bin/aarch64-w64-mingw32-c++ "$@"
+--- /dev/null
++++ b/mingwarm64/lib/ccache/bin/aarch64-w64-mingw32-g++
+@@ -0,0 +1,3 @@
++#!/bin/bash
++
++ccache /opt/bin/aarch64-w64-mingw32-g++ "$@"
+--- /dev/null
++++ b/mingwarm64/lib/ccache/bin/aarch64-w64-mingw32-gcc
+@@ -0,0 +1,3 @@
++#!/bin/bash
++
++ccache /opt/bin/aarch64-w64-mingw32-gcc "$@"
+--- /dev/null
++++ b/mingwarm64/lib/ccache/bin/c++
+@@ -0,0 +1,3 @@
++#!/bin/bash
++
++ccache /mingwarm64/bin/c++ "$@"
+--- /dev/null
++++ b/mingwarm64/lib/ccache/bin/cc
+@@ -0,0 +1,3 @@
++#!/bin/bash
++
++ccache /mingwarm64/bin/cc "$@"
+--- /dev/null
++++ b/mingwarm64/lib/ccache/bin/cpp
+@@ -0,0 +1,3 @@
++#!/bin/bash
++
++ccache /mingwarm64/bin/cpp "$@"
+--- /dev/null
++++ b/mingwarm64/lib/ccache/bin/g++
+@@ -0,0 +1,3 @@
++#!/bin/bash
++
++ccache /mingwarm64/bin/g++ "$@"
+--- /dev/null
++++ b/mingwarm64/lib/ccache/bin/gcc
+@@ -0,0 +1,3 @@
++#!/bin/bash
++
++ccache /mingwarm64/bin/gcc "$@"
