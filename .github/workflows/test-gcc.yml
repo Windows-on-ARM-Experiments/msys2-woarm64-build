@@ -1,0 +1,105 @@
+name: Build and run GCC tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      gcc_branch:
+        description: "GCC branch to build"
+        type: string
+        required: false
+        default: "woarm64"
+
+defaults:
+  run:
+    shell: msys2 {0}
+
+jobs:
+  build:
+    runs-on: [Windows, ARM64, Blackhex]
+
+    steps:
+      - name: Kill hanging processes
+        shell: cmd
+        run: |
+          tasklist
+          taskkill /t /f /im cc1.exe
+          taskkill /t /f /im pacman.exe
+          taskkill /t /f /im make.exe
+          taskkill /t /f /im wc.exe
+          taskkill /t /f /im gpg.exe
+          taskkill /t /f /im gpg-agent.exe
+          taskkill /t /f /im bash.exe
+          taskkill /t /f /im sh.exe
+          cd "${{ github.workspace }}"
+          rmdir /s /q packages
+          exit 0
+
+      - name: Add Git to PATH
+        shell: powershell
+        run: |
+          Write-Output "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout GCC repository
+        uses: actions/checkout@v4
+        with:
+          repository: Windows-on-ARM-Experiments/gcc-woarm64
+          ref: ${{ inputs.gcc_branch || 'woarm64' }}
+          path: ${{ github.workspace }}/gcc
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MSYS
+          update: false
+          cache: false
+
+      - name: Pacman hang workaround
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/pacman-workaround.sh
+
+      - name: Setup packages repository
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-repository.sh
+
+      - name: Install build dependencies
+        run: |
+          pacman -S --noconfirm \
+            base-devel \
+            autotools \
+            autogen \
+            ccache \
+            gcc \
+            mingw-w64-cross-gcc \
+            mingw-w64-cross-zlib
+
+      - name: Install GCC dependencies
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/install-gcc-dependencies.sh
+
+      - name: Patch GCC
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/patch-gcc.sh
+
+      - name: Enable Ccache
+        id: enable-ccache
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/enable-ccache.sh
+
+      - name: Cache Ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/ccache
+          key: test-gcc-ccache-${{ steps.enable-ccache.outputs.timestamp }}
+          restore-keys: test-gcc-ccache-
+          save-always: true
+
+      - name: Build GCC
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/build-gcc.sh
+
+      - name: Check GCC
+        run : |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/check-gcc.sh

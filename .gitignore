@@ -1,1 +1,5 @@
+.vscode/
 *.code-workspace
+gcc/
+gcc-build/
+gcc-install/
