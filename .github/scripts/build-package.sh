@@ -15,6 +15,7 @@ ARGUMENTS="--syncdeps \
     --noconfirm \
     --noprogressbar \
     --nocheck \
+    --skippgpcheck \
     --force \
     $([ "$NO_EXTRACT" = 1 ] && echo "--noextract" || echo "") \
     $([ "$CLEAN_BUILD" = 1 ] && echo "--cleanbuild" || echo "") \
@@ -23,7 +24,7 @@ ARGUMENTS="--syncdeps \
 ccache -svv  || true
 
 if [[ "$PACKAGE_REPOSITORY" == *MINGW* ]]; then
-    makepkg-mingw $ARGUMENTS --skippgpcheck
+    makepkg-mingw $ARGUMENTS
 else
     makepkg $ARGUMENTS
 fi

@@ -66,3 +66,9 @@ echo "::group::Build mingw-w64-cross-gcc"
     pacman -U --noconfirm *.pkg.tar.zst
   popd
 echo "::endgroup::"
+
+echo "::group::Build mingw-w64-cross-zlib"
+  pushd ../MSYS2-packages/mingw-w64-cross-zlib
+    makepkg $MAKEPKG_OPTIONS --skippgpcheck
+  popd
+echo "::endgroup::"
