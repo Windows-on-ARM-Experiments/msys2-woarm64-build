@@ -48,6 +48,7 @@ jobs:
             mingw-w64-x86_64-github-cli \
             mingw-w64-x86_64-jq \
             base-devel \
+            ${{ contains(inputs.packages_repository, 'MINGW') && 'mingw-w64-cross-gcc mingw-w64-x86_64-ccache' || ' ccache' }} \
             ${{ inputs.dependencies }}
 
       - name: Download artifacts
@@ -73,10 +74,31 @@ jobs:
           sparse-checkout: ${{ inputs.package_name }}
           path: ${{ github.workspace }}/packages
 
+      - name: Enable Ccache
+        id: enable-ccache
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/enable-ccache.sh
+
+      - name: Restore Ccache
+        uses:  actions/cache/restore@v4
+        with:
+          path: ${{ github.workspace }}/ccache
+          key: main-ccache-${{ steps.enable-ccache.outputs.timestamp }}
+          restore-keys: main-ccache-
+
       - name: Build ${{ inputs.package_name }}
         working-directory: ${{ github.workspace }}/packages/${{ inputs.package_name }}
         run: |
+          ccache -svv  || true
           `cygpath "${{ github.workspace }}"`/.github/scripts/build-package.sh ${{ inputs.packages_repository }}
+          ccache -svv || true
+
+      - name: Save Ccache
+        if: always()
+        uses:  actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/ccache
+          key: main-ccache-${{ steps.enable-ccache.outputs.timestamp }}
 
       - name: Upload ${{ inputs.package_name }}
         uses: actions/upload-artifact@v4
