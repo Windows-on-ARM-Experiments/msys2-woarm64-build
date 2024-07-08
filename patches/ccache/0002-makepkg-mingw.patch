@@ -1,0 +1,24 @@
+--- a/etc/makepkg_mingw.conf
++++ b/etc/makepkg_mingw.conf
+@@ -137,7 +137,7 @@
+ #-- check:    Run the check() function if present in the PKGBUILD
+ #-- sign:     Generate PGP signature file
+ #
+-BUILDENV=(!distcc color !ccache check !sign)
++BUILDENV=(!distcc color ccache check !sign)
+ #
+ #-- If using DistCC, your MAKEFLAGS will also need modification. In addition,
+ #-- specify a space-delimited list of hosts running in the DistCC cluster.
+--- a/usr/share/makepkg/buildenv/compiler.sh
++++ b/usr/share/makepkg/buildenv/compiler.sh
+@@ -34,8 +34,8 @@
+ 
+ buildenv_ccache() {
+ 	if check_buildoption "ccache" "y"; then
+-		if [ -d /usr/lib/ccache/bin ]; then
+-			export PATH="/usr/lib/ccache/bin:$PATH"
++		if [ -d ${MINGW_PREFIX:-/usr}/lib/ccache/bin ]; then
++			export PATH="${MINGW_PREFIX:-/usr}/lib/ccache/bin:$PATH"
+ 			using_ccache=1
+ 		fi
+ 	fi

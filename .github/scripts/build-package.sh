@@ -20,8 +20,12 @@ ARGUMENTS="--syncdeps \
     $([ "$CLEAN_BUILD" = 1 ] && echo "--cleanbuild" || echo "") \
     $([ "$INSTALL_PACKAGE" = 1 ] && echo "--install" || echo "")"
 
+ccache -svv  || true
+
 if [[ "$PACKAGE_REPOSITORY" == *MINGW* ]]; then
     makepkg-mingw $ARGUMENTS --skippgpcheck
 else
     makepkg $ARGUMENTS
 fi
+
+ccache -svv || true
