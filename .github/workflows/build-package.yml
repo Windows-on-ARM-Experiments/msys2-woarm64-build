@@ -74,6 +74,11 @@ jobs:
           sparse-checkout: ${{ inputs.package_name }}
           path: ${{ github.workspace }}/packages
 
+      - name: Setup cross-compilation environment
+        if: ${{ contains(inputs.packages_repository, 'MINGW') }}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-cross-compilation.sh
+
       - name: Enable Ccache
         id: enable-ccache
         run: |
