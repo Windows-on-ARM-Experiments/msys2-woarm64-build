@@ -31,15 +31,49 @@ env:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: [Windows, ARM64, Blackhex]
 
     steps:
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ contains(inputs.packages_repository, 'MINGW') && 'MINGW64' || 'MSYS' }}
+      - name: Kill hanging processes
+        shell: powershell
+        run: |
+          tasklist
+          taskkill /t /f /im conftest.exe
+          taskkill /t /f /im expect.exe
+          taskkill /t /f /im cc1.exe
+          taskkill /t /f /im pacman.exe
+          taskkill /t /f /im make.exe
+          taskkill /t /f /im wc.exe
+          taskkill /t /f /im gpg.exe
+          taskkill /t /f /im gpg-agent.exe
+          taskkill /t /f /im bash.exe
+          taskkill /t /f /im sh.exe
+          Set-Location "${{ github.workspace }}"
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path packages
+          tasklist
+          exit 0
+
+      - name: Fix Git long paths
+        shell: powershell
+        run: |
+          git config --global core.longpaths true
 
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ contains(inputs.packages_repository, 'MINGW') && 'MINGW64' || 'MSYS' }}
+          update: false
+          cache: false
+
+      - name: Pacman hang workaround
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/pacman-workaround.sh
+
+      - name: Setup packages repository
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-repository.sh
 
       - name: Install dependencies
         run: |
@@ -48,7 +82,7 @@ jobs:
             mingw-w64-x86_64-github-cli \
             mingw-w64-x86_64-jq \
             base-devel \
-            ${{ contains(inputs.packages_repository, 'MINGW') && 'mingw-w64-cross-gcc mingw-w64-x86_64-ccache' || ' ccache' }} \
+            ${{ contains(inputs.packages_repository, 'MINGW') && 'mingw-w64-x86_64-ccache' || ' ccache' }} \
             ${{ inputs.dependencies }}
 
       - name: Download artifacts
@@ -74,10 +108,28 @@ jobs:
           sparse-checkout: ${{ inputs.package_name }}
           path: ${{ github.workspace }}/packages
 
+      - name: Setup cross-compilation environment
+        if: ${{ contains(inputs.packages_repository, 'MINGW') }}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-cross-compilation.sh
+
       - name: Enable Ccache
         id: enable-ccache
         run: |
           `cygpath "${{ github.workspace }}"`/.github/scripts/enable-ccache.sh
+
+      - name: Check cross-compilation environment
+        run: |
+          echo "MSYSTEM_PREFIX: $MSYSTEM_PREFIX"
+          echo "MSYSTEM_CARCH: $MSYSTEM_CARCH"
+          echo "MSYSTEM_CHOST: $MSYSTEM_CHOST"
+          echo "PATH: $PATH"
+          which gcc || true
+          which ld || true
+          which x86_64-pc-msys-gcc || true
+          which x86_64-pc-msys-ld || true
+          which aarch64-w64-mingw32-gcc || true
+          which aarch64-w64-mingw32-ld || true
 
       - name: Restore Ccache
         uses:  actions/cache/restore@v4
