@@ -1,0 +1,118 @@
+name: Build MinGW cross-compilation toolchain
+
+on:
+  workflow_dispatch:
+    inputs:
+      msys2_packages_branch:
+        description: "MSYS2-packages branch to build"
+        type: string
+        required: false
+        default: "woarm64"
+  workflow_call:
+    inputs:
+      msys2_packages_branch:
+        description: "MSYS2-packages branch to build"
+        type: string
+        default: "woarm64"
+    outputs:
+      artifacts:
+        value: ${{ toJson(jobs) }}
+
+jobs:
+  mingw-w64-cross-headers:
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-cross-headers
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
+
+  mingw-w64-cross-binutils:
+    needs: mingw-w64-cross-headers
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-cross-binutils
+      needs: ${{ toJson(needs) }}
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
+
+  mingw-w64-cross-gcc-stage1:
+    needs: [mingw-w64-cross-headers, mingw-w64-cross-binutils]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-cross-gcc-stage1
+      needs: ${{ toJson(needs) }}
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
+
+  mingw-w64-cross-windows-default-manifest:
+    needs: [mingw-w64-cross-binutils, mingw-w64-cross-gcc-stage1]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-cross-windows-default-manifest
+      needs: ${{ toJson(needs) }}
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
+
+  mingw-w64-cross-crt:
+    needs:
+      [
+        mingw-w64-cross-headers,
+        mingw-w64-cross-binutils,
+        mingw-w64-cross-gcc-stage1
+      ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-cross-crt
+      needs: ${{ toJson(needs) }}
+      dependencies: mingw-w64-cross-winpthreads
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
+
+  mingw-w64-cross-winpthreads:
+    needs:
+      [
+        mingw-w64-cross-headers,
+        mingw-w64-cross-binutils,
+        mingw-w64-cross-gcc-stage1,
+        mingw-w64-cross-crt
+      ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-cross-winpthreads
+      needs: ${{ toJson(needs) }}
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
+
+  mingw-w64-cross-gcc:
+    needs:
+      [
+        mingw-w64-cross-headers,
+        mingw-w64-cross-binutils,
+        mingw-w64-cross-gcc-stage1,
+        mingw-w64-cross-windows-default-manifest,
+        mingw-w64-cross-crt,
+        mingw-w64-cross-winpthreads
+      ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-cross-gcc
+      needs: ${{ toJson(needs) }}
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
+
+  mingw-w64-cross-zlib:
+    needs: [
+      mingw-w64-cross-headers,
+      mingw-w64-cross-binutils,
+      mingw-w64-cross-windows-default-manifest,
+      mingw-w64-cross-crt,
+      mingw-w64-cross-winpthreads,
+      mingw-w64-cross-gcc
+    ]
+
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-cross-zlib
+      needs: ${{ toJson(needs) }}
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}

@@ -1,4 +1,4 @@
-name: Build MinGW and MSYS2 toolchain
+name: Build MinGW and MSYS2 toolchains
 
 on:
   push:
@@ -14,121 +14,23 @@ on:
         default: "woarm64"
 
 jobs:
-  mingw-w64-cross-headers:
-    uses: ./.github/workflows/build-package.yml
+  mingw-cross-toolchain:
+    name: MinGW cross-compilation toolchain
+    uses: ./.github/workflows/mingw-cross-toolchain.yml
     with:
-      package_name: mingw-w64-cross-headers
-      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
-      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
-
-  mingw-w64-cross-binutils:
-    needs: mingw-w64-cross-headers
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_name: mingw-w64-cross-binutils
-      needs: ${{ toJson(needs) }}
-      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
-      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
-
-  mingw-w64-cross-gcc-stage1:
-    needs: [mingw-w64-cross-headers, mingw-w64-cross-binutils]
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_name: mingw-w64-cross-gcc-stage1
-      needs: ${{ toJson(needs) }}
-      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
-      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
-
-  mingw-w64-cross-windows-default-manifest:
-    needs: [mingw-w64-cross-binutils, mingw-w64-cross-gcc-stage1]
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_name: mingw-w64-cross-windows-default-manifest
-      needs: ${{ toJson(needs) }}
-      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
-      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
-
-  mingw-w64-cross-crt:
-    needs:
-      [
-        mingw-w64-cross-headers,
-        mingw-w64-cross-binutils,
-        mingw-w64-cross-gcc-stage1
-      ]
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_name: mingw-w64-cross-crt
-      needs: ${{ toJson(needs) }}
-      dependencies: mingw-w64-cross-winpthreads
-      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
-      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
-
-  mingw-w64-cross-winpthreads:
-    needs:
-      [
-        mingw-w64-cross-headers,
-        mingw-w64-cross-binutils,
-        mingw-w64-cross-gcc-stage1,
-        mingw-w64-cross-crt
-      ]
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_name: mingw-w64-cross-winpthreads
-      needs: ${{ toJson(needs) }}
-      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
-      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
-
-  mingw-w64-cross-gcc:
-    needs:
-      [
-        mingw-w64-cross-headers,
-        mingw-w64-cross-binutils,
-        mingw-w64-cross-gcc-stage1,
-        mingw-w64-cross-windows-default-manifest,
-        mingw-w64-cross-crt,
-        mingw-w64-cross-winpthreads
-      ]
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_name: mingw-w64-cross-gcc
-      needs: ${{ toJson(needs) }}
-      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
-      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
-
-  mingw-w64-cross-zlib:
-    needs: [
-      mingw-w64-cross-headers,
-      mingw-w64-cross-binutils,
-      mingw-w64-cross-windows-default-manifest,
-      mingw-w64-cross-crt,
-      mingw-w64-cross-winpthreads,
-      mingw-w64-cross-gcc
-    ]
-
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_name: mingw-w64-cross-zlib
-      needs: ${{ toJson(needs) }}
-      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
-      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
+      msys2_packages_branch: ${{ inputs.msys2_packages_branch || 'woarm64' }}
 
   repository:
-    needs:
-      [
-        mingw-w64-cross-headers,
-        mingw-w64-cross-binutils,
-        mingw-w64-cross-gcc-stage1,
-        mingw-w64-cross-windows-default-manifest,
-        mingw-w64-cross-crt,
-        mingw-w64-cross-winpthreads,
-        mingw-w64-cross-gcc,
-        mingw-w64-cross-zlib
-      ]
+    name: Create MSYS2 repository
+    needs: mingw-cross-toolchain
     runs-on: windows-latest
 
     defaults:
       run:
         shell: msys2 {0}
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - uses: msys2/setup-msys2@v2
@@ -136,46 +38,21 @@ jobs:
           msystem: MSYS
           update: true
 
-      - name: Download mingw-w64-cross-headers
-        uses: actions/download-artifact@v4
-        with:
-          name: mingw-w64-cross-headers
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Download mingw-w64-cross-binutils
-        uses: actions/download-artifact@v4
-        with:
-          name: mingw-w64-cross-binutils
+      - name: Install dependencies
+        run: |
+          pacman -S --noconfirm \
+            git \
+            mingw-w64-x86_64-github-cli \
+            mingw-w64-x86_64-jq
 
-      - name: Download mingw-w64-cross-gcc-stage1
-        uses: actions/download-artifact@v4
-        with:
-          name: mingw-w64-cross-gcc-stage1
-
-      - name: Download mingw-w64-cross-windows-default-manifest
-        uses: actions/download-artifact@v4
-        with:
-          name: mingw-w64-cross-windows-default-manifest
-
-      - name: Download mingw-w64-cross-crt
-        uses: actions/download-artifact@v4
-        with:
-          name: mingw-w64-cross-crt
-
-      - name: Download mingw-w64-cross-winpthreads
-        uses: actions/download-artifact@v4
-        with:
-          name: mingw-w64-cross-winpthreads
-
-      - name: Download mingw-w64-cross-gcc
-        uses: actions/download-artifact@v4
-        with:
-          name: mingw-w64-cross-gcc
-
-      - name: Download mingw-w64-cross-zlib
-        uses: actions/download-artifact@v4
-        with:
-          name: mingw-w64-cross-zlib
-
+      - name: Download artifacts
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/download-artifacts.sh ${{ github.run_id }} \
+            '${{ needs.mingw-cross-toolchain.outputs.artifacts }}'
+  
       - name: Setup MSYS2 packages repository
         run: |
           mkdir aarch64
@@ -199,7 +76,8 @@ jobs:
 
   deploy:
     if: github.ref == 'refs/heads/main'
-    needs: [repository]
+    name: Deploy MSYS2 repository
+    needs: repository
     runs-on: ubuntu-latest
 
     permissions:
@@ -225,6 +103,7 @@ jobs:
         with:
           artifact_name: woarm64-msys2-repository
 
-  check-repository:
-    needs: [deploy]
+  check:
+    name: Check MSYS2 repository
+    needs: deploy
     uses: ./.github/workflows/check-repository.yml
