@@ -27,7 +27,8 @@ jobs:
 
       - name: Install toolchain
         run: |
-          pacman -S mingw-w64-cross-gcc --noconfirm
+          pacman -S mingw-w64-cross-mingwarm64-gcc --noconfirm
+          pacman -S mingw-w64-aarch64-cc --noconfirm
 
       - name: Build hello-world.exe
         run: |

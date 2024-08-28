@@ -38,6 +38,8 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ contains(inputs.packages_repository, 'MINGW') && 'MINGW64' || 'MSYS' }}
+          update: true
+          cache: true
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -62,8 +64,8 @@ jobs:
         run: |
           `cygpath "${{ github.workspace }}"`/.github/scripts/install-artifacts.sh
 
-      - name: Copy missing headers for mingw-w64-cross-crt
-        if: ${{ inputs.package_name == 'mingw-w64-cross-crt' }}
+      - name: Copy missing headers for mingw-w64-cross-mingwarm64-crt
+        if: ${{ inputs.package_name == 'mingw-w64-cross-mingwarm64-crt' }}
         run: |
           `cygpath "${{ github.workspace }}"`/.github/scripts/pthread-headers-hack-before.sh
 
