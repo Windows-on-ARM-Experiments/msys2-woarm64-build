@@ -8,10 +8,11 @@ ARGUMENTS="--syncdeps \
     --rmdeps \
     --noconfirm \
     --noprogressbar \
-    --nocheck \
     --skippgpcheck \
     --force \
     $([ "$NO_EXTRACT" = 1 ] && echo "--noextract" || echo "") \
+    $([ "$NO_CHECK" = 1 ] && echo "--nocheck " || echo "") \
+    $([ "$NO_ARCHIVE" = 1 ] && echo "--noarchive" || echo "") \
     $([ "$CLEAN_BUILD" = 1 ] && echo "--cleanbuild" || echo "") \
     $([ "$INSTALL_PACKAGE" = 1 ] && echo "--install" || echo "")"
 

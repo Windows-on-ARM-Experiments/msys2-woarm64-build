@@ -33,11 +33,27 @@ on:
         description: "Install additional dependencies"
         type: string
         default: ""
+      check:
+        description: "Enable check step after the package is built"
+        type: boolean
+        default: false
+      check_module:
+        description: "Module to test"
+        type: string
+        default: ""
+      check_filter:
+        description: "Test filter"
+        type: string
+        default: ""
 
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   FLAVOR: ${{ (inputs.runner_arch == 'aarch64') && (inputs.build_with_native && 'NATIVE_WITH_NATIVE' || 'NATIVE_WITH_CROSS') || 'CROSS' }}
   CLEAN_BUILD: 1
+  NO_CHECK: ${{ inputs.check && '0' || '1' }}
+  NO_ARCHIVE: ${{ inputs.check && '1' || '0' }}
+  MODULE: ${{ inputs.check_module }}
+  FILTER: ${{ inputs.check_filter }}
 
 jobs:
   build:
@@ -115,6 +131,11 @@ jobs:
         run: |
           `cygpath "${{ github.workspace }}"`/.github/scripts/pthread-headers-hack-before.sh
 
+      - name: Patch Dejagnu
+        if: inputs.if && inputs.check
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/patch-dejagnu.sh
+
       - name: Setup MINGWARM64 environment
         if: inputs.if && inputs.runner_arch == 'aarch64'
         run: |
@@ -134,7 +155,7 @@ jobs:
           key: ${{ inputs.package_name }}-ccache-${{ steps.enable-ccache.outputs.timestamp }}
           restore-keys: ${{ inputs.package_name }}-
 
-      - name: Build ${{ inputs.package_name }}
+      - name: Build ${{ inputs.check && 'and test' || '' }} ${{ inputs.package_name }}
         if: inputs.if
         timeout-minutes: 720
         working-directory: ${{ github.workspace }}/packages/${{ inputs.package_name }}
@@ -150,12 +171,20 @@ jobs:
           key: ${{ inputs.package_name }}-ccache-${{ steps.enable-ccache.outputs.timestamp }}
 
       - name: Upload ${{ inputs.package_name }}
-        if: inputs.if
+        if: inputs.if && !inputs.check
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.package_name }}
           retention-days: 3
           path: ${{ github.workspace }}/packages/${{ inputs.package_name }}/*.pkg.tar.zst
+
+      - name: Upload ${{ inputs.package_name }} test results
+        if: inputs.if && inputs.check
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.package_name }}-test-results
+          retention-days: 14
+          path: ${{ github.workspace }}/packages/${{ inputs.package_name }}/src/test-results
 
       - name: Upload build folder
         if: inputs.if && failure()
