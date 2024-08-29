@@ -6,36 +6,25 @@ set -o pipefail # fail of any command in pipeline is an error
 
 PACKAGE_REPOSITORY=$1
 
-CLEAN_BUILD=${CLEAN_BUILD:-0}
 INSTALL_PACKAGE=${INSTALL_PACKAGE:-0}
-NO_EXTRACT=${NO_EXTRACT:-0}
-NO_CHECK=${NO_CHECK:-1}
-NO_ARCHIVE=${NO_ARCHIVE:-0}
+NO_EXTRACT=${NO_EXTRACT:-1}
+NO_ARCHIVE=${NO_ARCHIVE:-1}
 
 ARGUMENTS="--syncdeps \
   --rmdeps \
   --noconfirm \
   --noprogressbar \
   --skippgpcheck \
+  --recheck \
   --force \
   $([ "$NO_EXTRACT" = 1 ] && echo "--noextract" || echo "") \
-  $([ "$NO_CHECK" = 1 ] && echo "--nocheck " || echo "") \
   $([ "$NO_ARCHIVE" = 1 ] && echo "--noarchive" || echo "") \
-  $([ "$CLEAN_BUILD" = 1 ] && echo "--cleanbuild" || echo "") \
   $([ "$INSTALL_PACKAGE" = 1 ] && echo "--install" || echo "")"
 
-echo "::group::Ccache statistics before build"
-  ccache -svv  || true
-echo "::endgroup::"
-
-echo "::group::Build package"
+echo "::group::Check package"
   if [[ "$PACKAGE_REPOSITORY" == *MINGW* ]]; then
     makepkg-mingw $ARGUMENTS
   else
     makepkg $ARGUMENTS
   fi
-echo "::endgroup::"
-
-echo "::group::Ccache statistics after build"
-  ccache -svv || true
 echo "::endgroup::"

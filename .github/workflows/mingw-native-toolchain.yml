@@ -26,6 +26,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
 
   mingw-w64-libtre-git:
     uses: ./.github/workflows/build-package.yml
@@ -34,6 +35,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
 
   mingw-w64-libsystre:
     needs: [
@@ -45,6 +47,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
       needs: ${{ toJson(needs) }}
 
   mingw-w64-ncurses:
@@ -58,6 +61,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
       needs: ${{ toJson(needs) }}
 
   mingw-w64-gettext:
@@ -73,6 +77,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
       needs: ${{ toJson(needs) }}
 
   mingw-w64-headers-git:
@@ -82,6 +87,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
 
   mingw-w64-crt-git:
     needs: [
@@ -93,6 +99,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
       needs: ${{ toJson(needs) }}
 
   mingw-w64-winpthreads-git:
@@ -106,6 +113,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
       needs: ${{ toJson(needs) }}
 
   mingw-w64-bzip2:
@@ -115,6 +123,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
 
   mingw-w64-zlib:
     needs: [
@@ -126,6 +135,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
       needs: ${{ toJson(needs) }}
 
   mingw-w64-zstd:
@@ -135,6 +145,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
 
   mingw-w64-gmp:
     uses: ./.github/workflows/build-package.yml
@@ -143,6 +154,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
 
   mingw-w64-mpfr:
     uses: ./.github/workflows/build-package.yml
@@ -154,6 +166,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
       needs: ${{ toJson(needs) }}
 
   mingw-w64-isl:
@@ -166,6 +179,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
       needs: ${{ toJson(needs) }}
 
   mingw-w64-binutils:
@@ -190,6 +204,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
       needs: ${{ toJson(needs) }}
 
   mingw-w64-mpc:
@@ -203,6 +218,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
       needs: ${{ toJson(needs) }}
 
   mingw-w64-windows-default-manifest:
@@ -212,6 +228,7 @@ jobs:
       packages_repository: Windows-on-ARM-Experiments/MINGW-packages
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
+      cross_build: true
 
   mingw-w64-gcc:
     needs: [
@@ -240,3 +257,4 @@ jobs:
       packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
       runner_arch: aarch64
       needs: ${{ toJson(needs) }}
+      cross_build: true
