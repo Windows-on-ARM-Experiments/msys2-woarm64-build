@@ -1,0 +1,56 @@
+--- a/usr/bin/makepkg
++++ b/usr/bin/makepkg
+@@ -70,6 +70,7 @@
+ PKGVERFUNC=0
+ PREPAREFUNC=0
+ REPKG=0
++RECHECK=0
+ REPRODUCIBLE=0
+ RMDEPS=0
+ SKIPCHECKSUMS=0
+@@ -879,6 +880,7 @@
+ 	printf -- "$(gettext "  -p <file>        Use an alternate build script (instead of '%s')")\n" "$BUILDSCRIPT"
+ 	printf -- "$(gettext "  -r, --rmdeps     Remove installed dependencies after a successful build")\n"
+ 	printf -- "$(gettext "  -R, --repackage  Repackage contents of the package without rebuilding")\n"
++	printf -- "$(gettext "  --recheck        Run only the %s function in the %s without rebuilding")\n" "check()" "$BUILDSCRIPT"
+ 	printf -- "$(gettext "  -s, --syncdeps   Install missing dependencies with %s")\n" "pacman"
+ 	printf -- "$(gettext "  -S, --source     Generate a source-only tarball without downloaded sources")\n"
+ 	printf -- "$(gettext "  -V, --version    Show version information and exit")\n"
+@@ -943,7 +945,7 @@
+ OPT_LONG=('allsource' 'check' 'clean' 'cleanbuild' 'config:' 'dir:' 'force' 'geninteg'
+           'help' 'holdver' 'ignorearch' 'install' 'key:' 'log' 'noarchive' 'nobuild'
+           'nocolor' 'nocheck' 'nodeps' 'noextract' 'noprepare' 'nosign' 'packagelist'
+-          'printsrcinfo' 'repackage' 'rmdeps' 'sign' 'skipchecksums' 'skipinteg'
++          'printsrcinfo' 'repackage' 'recheck' 'rmdeps' 'sign' 'skipchecksums' 'skipinteg'
+           'skippgpcheck' 'source' 'syncdeps' 'verifysource' 'version')
+ 
+ # Pacman Options
+@@ -992,6 +994,7 @@
+ 		--printsrcinfo)   BUILDPKG=0 PRINTSRCINFO=1 IGNOREARCH=1;;
+ 		-r|--rmdeps)      RMDEPS=1 ;;
+ 		-R|--repackage)   REPKG=1 ;;
++		--recheck)        RECHECK=1 RUN_CHECK='y' ;;
+ 		--sign)           SIGNPKG='y' ;;
+ 		--skipchecksums)  SKIPCHECKSUMS=1 ;;
+ 		--skipinteg)      SKIPCHECKSUMS=1; SKIPPGPCHECK=1 ;;
+@@ -1299,7 +1302,7 @@
+ export MINGW_CHOST MINGW_PREFIX MINGW_PACKAGE_PREFIX
+ export DXSDK_DIR ACLOCAL_PATH PKG_CONFIG_PATH
+ 
+-if (( !REPKG )); then
++if (( !REPKG && !RECHECK )); then
+ 	if (( NOEXTRACT && ! VERIFYSOURCE )); then
+ 		warning "$(gettext "Using existing %s tree")" "\$srcdir/"
+ 	else
+@@ -1348,8 +1351,10 @@
+ 
+ 	prepare_buildenv
+ 
+-	if (( ! REPKG )); then
++	if (( !REPKG && !RECHECK )); then
+ 		(( BUILDFUNC )) && run_build
++	fi
++	if (( !REPKG )); then
+ 		(( CHECKFUNC )) && run_check
+ 		cd_safe "$startdir"
+ 	fi

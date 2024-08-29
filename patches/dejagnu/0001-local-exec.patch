@@ -1,0 +1,159 @@
+--- a/usr/share/dejagnu/remote.exp
++++ b/usr/share/dejagnu/remote.exp
+@@ -164,14 +164,7 @@
+     # ignore SIGHUP.
+     global errorInfo
+     if { $inp eq "" && $outp eq "" } {
+-	set id -1
+-	set result [catch "eval spawn -ignore SIGHUP \{${commandline}\}" pid]
+-	if { $result == 0 } {
+-	    set result2 0
+-	} else {
+-	    set pid 0
+-	    set result2 5
+-	}
++	set status [catch "exec timeout -k 5 10 $commandline" output]
+     } else {
+ 	# Use a command pipeline with open.
+ 	if { $inp ne "" } {
+@@ -205,78 +198,80 @@
+ 	}
+ 	set pid [pid $id]
+ 	set result [catch "spawn -ignore SIGHUP -leaveopen $id" result2]
+-    }
+-    # Prepend "-" to each pid, to generate the "process group IDs" needed by
+-    # kill.
+-    set pgid "-[join $pid { -}]"
+-    verbose "pid is $pid $pgid"
+-    if { $result != 0 || $result2 != 0 } {
+-	# This shouldn't happen.
+-	if {[info exists errorInfo]} {
+-	    set foo $errorInfo
+-	} else {
+-	    set foo ""
++
++	# Prepend "-" to each pid, to generate the "process group IDs" needed by
++	# kill.
++	set pgid "-[join $pid { -}]"
++	verbose "pid is $pid $pgid"
++ 	if { $result != 0 || $result2 != 0 } {
++	    # This shouldn't happen.
++	    if {[info exists errorInfo]} {
++		set foo $errorInfo
++	    } else {
++		set foo ""
++	    }
++	    verbose "spawn -open $id failed, $result $result2, $foo"
++	    catch "close $id"
++	    return [list -1 "spawn failed"]
+ 	}
+-	verbose "spawn -open $id failed, $result $result2, $foo"
+-	catch "close $id"
+-	return [list -1 "spawn failed"]
+-    }
+ 
+-    set got_eof 0
+-    set output ""
++	set got_eof 0
++	set output ""
+ 
+-    # Wait for either $timeout seconds to elapse, or for the program to
+-    # exit.
+-    expect {
+-	-i $spawn_id -timeout $timeout -re ".+" {
+-	    append output $expect_out(buffer)
+-	    exp_continue -continue_timer
+-	}
+-	timeout {
+-	    warning "program timed out"
+-	}
+-	eof {
+-	    set got_eof 1
++	# Wait for either $timeout seconds to elapse, or for the program to
++	# exit.
++	expect {
++	    -i $spawn_id -timeout $timeout -re ".+" {
++		append output $expect_out(buffer)
++		exp_continue -continue_timer
++	    }
++	    timeout {
++		warning "program timed out"
++	    }
++	    eof {
++		set got_eof 1
++	    }
+ 	}
+-    }
+ 
+-    # If we didn't get EOF, we have to kill the poor defenseless program.
+-    if { $got_eof } {
+-	set pid -1
+-    }
+-    set r2 [close_wait_program $spawn_id $pid wres]
+-    if { $id > 0 } {
+-	if { $pid > 0 } {
+-	    # If timed-out, don't wait for all the processes associated
+-	    # with the pipeline to terminate as a stuck one would cause
+-	    # us to hang.
+-	    catch {fconfigure $id -blocking false}
++	# If we didn't get EOF, we have to kill the poor defenseless program.
++	if { $got_eof } {
++	    set pid -1
+ 	}
+-	set r2 [catch "close $id" res]
+-    } else {
+-	verbose "waitres is $wres" 2
+-	if { $r2 == 0 } {
+-	    set r2 [lindex $wres 3]
+-	    if { [llength $wres] > 4 } {
+-		if { [lindex $wres 4] eq "CHILDKILLED" } {
+-		    set r2 1
+-		}
++	set r2 [close_wait_program $spawn_id $pid wres]
++	if { $id > 0 } {
++	    if { $pid > 0 } {
++		# If timed-out, don't wait for all the processes associated
++		# with the pipeline to terminate as a stuck one would cause
++		# us to hang.
++		catch {fconfigure $id -blocking false}
+ 	    }
+-	    if { $r2 != 0 } {
+-		set res $wres
++	    set r2 [catch "close $id" res]
++	} else {
++	    verbose "waitres is $wres" 2
++	    if { $r2 == 0 } {
++		set r2 [lindex $wres 3]
++		if { [llength $wres] > 4 } {
++		    if { [lindex $wres 4] eq "CHILDKILLED" } {
++			set r2 1
++		    }
++		}
++		if { $r2 != 0 } {
++		    set res $wres
++		} else {
++		    set res ""
++		}
+ 	    } else {
+-		set res ""
++		set res "wait failed"
+ 	    }
++	}
++	if { $r2 != 0 || $res ne "" || ! $got_eof } {
++	    verbose "close result is $res"
++	    set status 1
+ 	} else {
+-	    set res "wait failed"
++	    set status 0
+ 	}
+     }
+-    if { $r2 != 0 || $res ne "" || ! $got_eof } {
+-	verbose "close result is $res"
+-	set status 1
+-    } else {
+-	set status 0
+-    }
++
+     verbose "output is $output status $status"
+     if { $outp eq "" || $outp eq "|& cat" } {
+ 	return [list $status $output]
