@@ -19,100 +19,103 @@ on:
         value: ${{ toJson(jobs) }}
 
 jobs:
-  mingw-w64-cross-headers:
+  mingw-w64-cross-mingwarm64-headers:
     uses: ./.github/workflows/build-package.yml
     with:
-      package_name: mingw-w64-cross-headers
+      package_name: mingw-w64-cross-mingwarm64-headers
       packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
       packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
 
-  mingw-w64-cross-binutils:
-    needs: mingw-w64-cross-headers
+  mingw-w64-cross-mingwarm64-binutils:
+    needs: mingw-w64-cross-mingwarm64-headers
     uses: ./.github/workflows/build-package.yml
     with:
-      package_name: mingw-w64-cross-binutils
+      package_name: mingw-w64-cross-mingwarm64-binutils
       needs: ${{ toJson(needs) }}
       packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
       packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
 
-  mingw-w64-cross-gcc-stage1:
-    needs: [mingw-w64-cross-headers, mingw-w64-cross-binutils]
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_name: mingw-w64-cross-gcc-stage1
-      needs: ${{ toJson(needs) }}
-      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
-      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
-
-  mingw-w64-cross-windows-default-manifest:
-    needs: [mingw-w64-cross-binutils, mingw-w64-cross-gcc-stage1]
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_name: mingw-w64-cross-windows-default-manifest
-      needs: ${{ toJson(needs) }}
-      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
-      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
-
-  mingw-w64-cross-crt:
-    needs:
-      [
-        mingw-w64-cross-headers,
-        mingw-w64-cross-binutils,
-        mingw-w64-cross-gcc-stage1
-      ]
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_name: mingw-w64-cross-crt
-      needs: ${{ toJson(needs) }}
-      dependencies: mingw-w64-cross-winpthreads
-      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
-      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
-
-  mingw-w64-cross-winpthreads:
-    needs:
-      [
-        mingw-w64-cross-headers,
-        mingw-w64-cross-binutils,
-        mingw-w64-cross-gcc-stage1,
-        mingw-w64-cross-crt
-      ]
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_name: mingw-w64-cross-winpthreads
-      needs: ${{ toJson(needs) }}
-      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
-      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
-
-  mingw-w64-cross-gcc:
-    needs:
-      [
-        mingw-w64-cross-headers,
-        mingw-w64-cross-binutils,
-        mingw-w64-cross-gcc-stage1,
-        mingw-w64-cross-windows-default-manifest,
-        mingw-w64-cross-crt,
-        mingw-w64-cross-winpthreads
-      ]
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_name: mingw-w64-cross-gcc
-      needs: ${{ toJson(needs) }}
-      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
-      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
-
-  mingw-w64-cross-zlib:
+  mingw-w64-cross-mingwarm64-gcc-stage1:
     needs: [
-      mingw-w64-cross-headers,
-      mingw-w64-cross-binutils,
-      mingw-w64-cross-windows-default-manifest,
-      mingw-w64-cross-crt,
-      mingw-w64-cross-winpthreads,
-      mingw-w64-cross-gcc
+      mingw-w64-cross-mingwarm64-headers,
+      mingw-w64-cross-mingwarm64-binutils
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-cross-mingwarm64-gcc-stage1
+      needs: ${{ toJson(needs) }}
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
+
+  mingw-w64-cross-mingwarm64-windows-default-manifest:
+    needs: [
+      mingw-w64-cross-mingwarm64-binutils,
+      mingw-w64-cross-mingwarm64-gcc-stage1
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-cross-mingwarm64-windows-default-manifest
+      needs: ${{ toJson(needs) }}
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
+
+  mingw-w64-cross-mingwarm64-crt:
+    needs: [
+      mingw-w64-cross-mingwarm64-headers,
+      mingw-w64-cross-mingwarm64-binutils,
+      mingw-w64-cross-mingwarm64-gcc-stage1
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-cross-mingwarm64-crt
+      needs: ${{ toJson(needs) }}
+      dependencies: mingw-w64-cross-mingw64-winpthreads
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
+
+  mingw-w64-cross-mingwarm64-winpthreads:
+    needs: [
+      mingw-w64-cross-mingwarm64-headers,
+      mingw-w64-cross-mingwarm64-binutils,
+      mingw-w64-cross-mingwarm64-gcc-stage1,
+      mingw-w64-cross-mingwarm64-crt
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-cross-mingwarm64-winpthreads
+      needs: ${{ toJson(needs) }}
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
+
+  mingw-w64-cross-mingwarm64-gcc:
+    needs: [
+      mingw-w64-cross-mingwarm64-headers,
+      mingw-w64-cross-mingwarm64-binutils,
+      mingw-w64-cross-mingwarm64-gcc-stage1,
+      mingw-w64-cross-mingwarm64-windows-default-manifest,
+      mingw-w64-cross-mingwarm64-crt,
+      mingw-w64-cross-mingwarm64-winpthreads
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-cross-mingwarm64-gcc
+      needs: ${{ toJson(needs) }}
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
+
+  mingw-w64-cross-mingwarm64-zlib:
+    needs: [
+      mingw-w64-cross-mingwarm64-headers,
+      mingw-w64-cross-mingwarm64-binutils,
+      mingw-w64-cross-mingwarm64-windows-default-manifest,
+      mingw-w64-cross-mingwarm64-crt,
+      mingw-w64-cross-mingwarm64-winpthreads,
+      mingw-w64-cross-mingwarm64-gcc
     ]
 
     uses: ./.github/workflows/build-package.yml
     with:
-      package_name: mingw-w64-cross-zlib
+      package_name: mingw-w64-cross-mingwarm64-zlib
       needs: ${{ toJson(needs) }}
       packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
       packages_branch: ${{ github.event.inputs.msys2_packages_branch || 'woarm64' }}
