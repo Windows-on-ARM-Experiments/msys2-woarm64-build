@@ -1,0 +1,20 @@
+name: Build MinGW libjpeg-turbo using MSYS2 toolchain
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      mingw_packages_branch:
+        description: "MINGW-packages branch to build"
+        type: string
+        required: false
+        default: "woarm64"
+
+jobs:
+  mingw-w64-libjpeg-turbo:
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-libjpeg-turbo
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'woarm64' }}
+      cross_compile: true
