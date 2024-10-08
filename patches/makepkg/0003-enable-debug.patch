@@ -1,0 +1,11 @@
+--- a/etc/makepkg_mingw.conf
++++ b/etc/makepkg_mingw.conf
+@@ -169,7 +169,7 @@
+ #-- lto:        Add compile flags for building with link time optimization
+ #-- autodeps:   Automatically add depends/provides
+ #
+-OPTIONS=(strip docs !libtool staticlibs emptydirs zipman purge !debug !lto !autodeps)
++OPTIONS=(!strip docs !libtool staticlibs emptydirs zipman purge !debug !lto !autodeps)
+ 
+ #-- File integrity checks to use. Valid: ck, md5, sha1, sha224, sha256, sha384, sha512, b2
+ INTEGRITY_CHECK=(sha256)

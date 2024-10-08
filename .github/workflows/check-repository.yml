@@ -5,18 +5,22 @@ on:
   workflow_call:
 
 jobs:
-  build:
+  build-cross:
     runs-on: windows-latest
 
     defaults:
       run:
         shell: msys2 {0}
 
+    env:
+      CROSS_BUILD: 1
+
     steps:
-      - uses: msys2/setup-msys2@v2
+      - uses: Windows-on-ARM-Experiments/setup-msys2@main
         with:
           msystem: MSYS
           update: true
+          cache: true
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,10 +29,10 @@ jobs:
         run: |
           `cygpath "${{ github.workspace }}"`/.github/scripts/setup-repository.sh
 
-      - name: Install toolchain
+      - name: Install cross toolchain
         run: |
-          pacman -S mingw-w64-cross-mingwarm64-gcc --noconfirm
-          pacman -S mingw-w64-aarch64-cc --noconfirm
+          pacman -S --noconfirm mingw-w64-cross-mingwarm64-gcc
+          pacman -S --noconfirm --needed mingw-w64-aarch64-cc
 
       - name: Build hello-world.exe
         run: |
@@ -37,18 +41,113 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: hello-world
+          name: hello-world-cross
           path: hello-world.exe
 
-  test:
-    needs: [build]
+  test-cross:
+    needs: [build-cross]
     runs-on: [Windows, GCC, ARM64]
 
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: hello-world
+          name: hello-world-cross
+          path: ${{ github.workspace }}\artifacts
+
+      - name: Run hello-world.exe
+        run: |
+          ls ${{ github.workspace }}\artifacts
+          ${{ github.workspace }}\artifacts\hello-world.exe
+
+  build-native:
+    runs-on: ["Windows", "ARM64", "Blackhex"]
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    env:
+      CROSS_BUILD: 0
+
+    steps:
+      - name: Kill hanging processes
+        shell: powershell
+        run: |
+          tasklist
+          taskkill /F /FI 'MODULES eq msys-2.0.dll'
+          tasklist
+          Set-Location "${{ github.workspace }}"
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path packages
+          exit 0
+
+      - name: Fix Git long paths
+        shell: powershell
+        run: |
+          git config --global core.longpaths true
+
+      - name: Fix $PATH
+        shell: powershell
+        run: |
+          Write-Output "GITHUB_PATH: $env:GITHUB_PATH"
+          Write-Output "C:\Program Files\Git\usr\bin\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - uses: Windows-on-ARM-Experiments/setup-msys2@main
+        with:
+          msystem: MINGWARM64
+          update: false
+          cache: false
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Pacman hang workaround
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/pacman-workaround.sh
+
+      - name: First MSYS2 update
+        shell: powershell
+        run: |
+          msys2 -c 'pacman -Syuu --noconfirm'
+          exit 0
+
+      - name: Second MSYS2 update
+        shell: powershell
+        run: |
+          msys2 -c 'pacman -Syuu --noconfirm'
+
+      - name: Setup packages repository
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-repository.sh
+
+      - name: Install native toolchain
+        run: |
+          pacman -S --noconfirm mingw-w64-aarch64-gcc
+          pacman -S --noconfirm --needed mingw-w64-aarch64-cc
+
+      - name: Setup MINGWARM64 environment
+        run: |
+            `cygpath "${{ github.workspace }}"`/.github/scripts/setup-mingwarm64.sh
+
+      - name: Build hello-world.exe
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/build-hello-world.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hello-world-native
+          path: hello-world.exe
+         
+  test-native:
+    needs: [build-native]
+    runs-on: [Windows, GCC, ARM64]
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: hello-world-native
           path: ${{ github.workspace }}\artifacts
 
       - name: Run hello-world.exe
