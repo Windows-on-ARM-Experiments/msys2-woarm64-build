@@ -18,11 +18,27 @@ on:
         description: "Architecture to build on"
         type: string
         default: "x86_64"
+      cross_build:
+        description: "Use MSYS2 -> MINGW cross-compiler"
+        type: boolean
+        default: false
       needs:
         description: "Parent workflow job dependencies"
         type: string
       dependencies:
         description: "Install additional dependencies"
+        type: string
+        default: ""
+      check:
+        description: "Enable check step after the package is built"
+        type: boolean
+        default: false
+      check_module:
+        description: "Module to test"
+        type: string
+        default: ""
+      check_filter:
+        description: "Test filter"
         type: string
         default: ""
 
@@ -32,8 +48,9 @@ defaults:
 
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  CROSS_BUILD: ${{ inputs.runner_arch == 'aarch64' && '1' || '0' }}
-  CLEAN_BUILD: 1
+  CROSS_BUILD: ${{ inputs.cross_build && '1' || '0' }}
+  MODULE: ${{ inputs.check_module }}
+  FILTER: ${{ inputs.check_filter }}
 
 jobs:
   build:
@@ -41,11 +58,13 @@ jobs:
     runs-on: >-
       ${{ fromJson(inputs.runner_arch == 'aarch64'
         && '["Windows", "ARM64", "Blackhex"]'
-        || '["windows-latest"]') }}
+        || (inputs.check && '["Windows", "X64", "GCC"]' || '["windows-latest"]')
+      ) }}
+    timeout-minutes: ${{ inputs.check && 720 || 180 }}
 
     steps:
       - name: Kill hanging processes
-        if: ${{ inputs.runner_arch == 'aarch64' }}
+        if: ${{ inputs.runner_arch == 'aarch64' || inputs.check }}
         shell: powershell
         run: |
           tasklist
@@ -62,7 +81,7 @@ jobs:
           git config --global core.longpaths true
 
       - name: Fix $PATH
-        if: ${{ inputs.runner_arch == 'aarch64' }}
+        if: ${{ inputs.runner_arch == 'aarch64' || inputs.check }}
         shell: powershell
         run: |
           Write-Output "GITHUB_PATH: $env:GITHUB_PATH"
@@ -120,8 +139,11 @@ jobs:
             mingw-w64-x86_64-jq \
             base-devel \
             ${{ contains(inputs.packages_repository, 'MINGW')
-               && 'mingw-w64-cross-mingwarm64-gcc mingw-w64-cross-mingwarm64-windows-default-manifest mingw-w64-x86_64-gcc-libs'
-               || '' }} \
+              && (inputs.cross_build
+                && 'mingw-w64-cross-mingwarm64-gcc mingw-w64-cross-mingwarm64-windows-default-manifest mingw-w64-x86_64-gcc-libs'
+                || 'mingw-w64-aarch64-gcc')
+              || '' }} \
+            ${{ inputs.check && 'dejagnu' || ''}} \
             ${{ inputs.dependencies }}
 
       - name: Download artifacts
@@ -138,6 +160,16 @@ jobs:
         if: ${{ inputs.package_name == 'mingw-w64-cross-mingwarm64-crt' }}
         run: |
           `cygpath "${{ github.workspace }}"`/.github/scripts/pthread-headers-hack-before.sh
+
+      - name: Patch Dejagnu
+        if: ${{ inputs.check }}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/patch-dejagnu.sh
+
+      - name: Patch makepkg
+        if: ${{ inputs.check }}
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/patch-makepkg.sh
 
       - name: Setup MINGWARM64 environment
         if: ${{ inputs.runner_arch == 'aarch64' }}
@@ -158,8 +190,20 @@ jobs:
 
       - name: Build ${{ inputs.package_name }}
         working-directory: ${{ github.workspace }}/packages/${{ inputs.package_name }}
+        env:
+          CLEAN_BUILD: 1
+          NO_ARCHIVE: ${{ inputs.check && '1' || '0' }}
         run: |
           `cygpath "${{ github.workspace }}"`/.github/scripts/build-package.sh ${{ inputs.packages_repository }}
+
+      - name: Check ${{ inputs.package_name }}
+        if: ${{ inputs.check }}
+        working-directory: ${{ github.workspace }}/packages/${{ inputs.package_name }}
+        env:
+          NO_EXTRACT: 1
+          NO_ARCHIVE: 1
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/check-package.sh ${{ inputs.packages_repository }}
 
       - name: Save Ccache
         if: always()
@@ -169,11 +213,20 @@ jobs:
           key: ${{ inputs.package_name }}-ccache-${{ steps.enable-ccache.outputs.timestamp }}
 
       - name: Upload ${{ inputs.package_name }}
+        if: ${{ !inputs.check }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.package_name }}
           retention-days: 7
           path: ${{ github.workspace }}/packages/${{ inputs.package_name }}/*.pkg.tar.zst
+
+      - name: Upload ${{ inputs.package_name }} test results
+        if: ${{ inputs.check }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.package_name }}-test-results
+          retention-days: 14
+          path: ${{ github.workspace }}/packages/${{ inputs.package_name }}/src/test-results
 
       - name: Upload build folder
         if: failure()
