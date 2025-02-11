@@ -1,14 +1,8 @@
 #!/bin/bash
 
-set -e # exit on error
-set -x # echo on
-set -o pipefail # fail of any command in pipeline is an error
+source `dirname ${BASH_SOURCE[0]}`/../../config.sh
 
 PACKAGE_REPOSITORY=$1
-
-CLEAN_BUILD=${CLEAN_BUILD:-0}
-INSTALL_PACKAGE=${INSTALL_PACKAGE:-0}
-NO_EXTRACT=${NO_EXTRACT:-0}
 
 ARGUMENTS="--syncdeps \
     --rmdeps \
@@ -21,12 +15,22 @@ ARGUMENTS="--syncdeps \
     $([ "$CLEAN_BUILD" = 1 ] && echo "--cleanbuild" || echo "") \
     $([ "$INSTALL_PACKAGE" = 1 ] && echo "--install" || echo "")"
 
-ccache -svv  || true
-
-if [[ "$PACKAGE_REPOSITORY" == *MINGW* ]]; then
-    makepkg-mingw $ARGUMENTS
-else
-    makepkg $ARGUMENTS
+if command -v ccache &> /dev/null; then
+    echo "::group::Ccache statistics before build"
+        ccache -svv  || true
+    echo "::endgroup::"
 fi
 
-ccache -svv || true
+echo "::group::Build package"
+    if [[ "$PACKAGE_REPOSITORY" == *MINGW* ]]; then
+        makepkg-mingw $ARGUMENTS
+    else
+        makepkg $ARGUMENTS
+    fi
+echo "::endgroup::"
+
+if command -v ccache &> /dev/null; then
+    echo "::group::Ccache statistics after build"
+        ccache -svv || true
+    echo "::endgroup::"
+fi
