@@ -7,7 +7,8 @@ It also serves as a documentation of the necessary steps to build them.
 
 The actual MSYS2 packages recipes dwells in `woarm64` branches of
 [Windows-on-ARM-Experiments/MSYS2-packages](https://github.com/Windows-on-ARM-Experiments/MSYS2-packages)
-repository. Please report any issue related to packages build to this repository's
+and [Windows-on-ARM-Experiments/MINGW-packages](https://github.com/Windows-on-ARM-Experiments/MINGW-packages)
+repositories. Please report any issue related to packages build to this repository's
 [issues list](https://github.com/Windows-on-ARM-Experiments/msys2-woarm64-build/issues).
 The actual GCC, binutils, and MinGW source codes with the necessary `aarch64-w64-mingw32` target
 changes are located at [Windows-on-ARM-Experiments/gcc-woarm64](https://github.com/Windows-on-ARM-Experiments/gcc-woarm64),
@@ -18,13 +19,17 @@ resp. Please report any issues related to outputs of the toolchain binaries to
 repository's
 [issues list](https://github.com/Windows-on-ARM-Experiments/mingw-woarm64-build/issues).
 
-## Packages Repository Usage
+## Packages Repositories Usage
 
 Add the following to the `/etc/pacman.conf` before any other package repositories specification:
 
 ```ini
 [woarm64]
-Server = https://windows-on-arm-experiments.github.io/msys2-woarm64-build/$arch
+Server = https://windows-on-arm-experiments.github.io/msys2-woarm64-build/msys/x86_64
+SigLevel = Optional
+
+[woarm64-native]
+Server = https://windows-on-arm-experiments.github.io/msys2-woarm64-build/mingw/aarch64
 SigLevel = Optional
 ```
 
@@ -44,13 +49,32 @@ pacman -S mingw-w64-cross-mingwarm64-gcc
 
 to install `x86_64-pc-msys` host MinGW cross toolchain with `aarch64-w64-mingw32` target support.
 
+Run:
+
+```bash
+pacman -S mingw-w64-aarch64-gcc
+```
+
+to instal native `aarch64-w64-mingw32` host, `aarch64-w64-mingw32` target MinGW toolchain.
+
 ## Building Packages Locally
 
 In case one would like to build all the cross-compilation toolchain packages locally, there is
-a `build.sh` script. It expects that the
+a `build-cross.sh` script. It expects that the
 [Windows-on-ARM-Experiments/MSYS2-packages](https://github.com/Windows-on-ARM-Experiments/MSYS2-packages)
 package recipes repository is already cloned in the parent folder of this repository's folder and
 it must be executed from `MSYS` environment.
+
+In case one would like to build all the native toolchain packages locally, there is
+a `build-native.sh` script. It expects that the
+[Windows-on-ARM-Experiments/MINGW-packages](https://github.com/Windows-on-ARM-Experiments/MINGW-packages)
+package recipes repositories is already cloned in the parent folder of this repository's folder and
+it must be executed from `MINGWARM64` environment.
+
+Until the `MINGWARM64` environment will be available in the upstream MSYS2 installation, one can
+patch the MSYS2 installation to add the `MINGWARM64` environment using
+[`.github/scripts/setup-mingwarm64.sh`](https://github.com/Windows-on-ARM-Experiments/msys2-woarm64-build/blob/main/.github/scripts/setup-mingwarm64.sh)
+script.
 
 ## MingGW Cross-Compilation Toolchain CI
 
@@ -139,7 +163,7 @@ flowchart LR
 
 ## MinGW Native Toolchain CI
 
-The [mingw-native-toolchain.yml](https://github.com/Windows-on-ARM-Experiments/msys2-woarm64-build/blob/native-mingw-toolchain/.github/workflows/mingw-native-toolchain.yml)
+The [mingw-native-toolchain.yml](https://github.com/Windows-on-ARM-Experiments/msys2-woarm64-build/blob/main/.github/workflows/mingw-native-toolchain.yml)
 workflow builds native `aarch64-w64-mingw32` toolchain packages:
 
 ```mermaid
@@ -163,8 +187,8 @@ flowchart LR
         mingw-w64-libiconv
     `"]:::DONE
 
-    mingw-w64-libtre-git["`
-        mingw-w64-libtre-git
+    mingw-w64-libtre["`
+        mingw-w64-libtre
     `"]:::DONE
 
     mingw-w64-libsystre["`
@@ -234,7 +258,7 @@ flowchart LR
     subgraph Dependencies
         mingw-w64-libiconv
 
-        mingw-w64-libtre-git --> mingw-w64-libsystre
+        mingw-w64-libtre --> mingw-w64-libsystre
         mingw-w64-libsystre --> mingw-w64-ncurses
         mingw-w64-ncurses --> mingw-w64-gettext
 
