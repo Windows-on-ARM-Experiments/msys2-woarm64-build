@@ -1,0 +1,78 @@
+name: Build and test mingw-w64-gcc
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      packages_repository:
+        description: "MSYS2 packages repository to build from"
+        type: string
+        default: "Windows-on-ARM-Experiments/MINGW-packages"
+      packages_branch:
+        description: "MSYS2 packages branch to build from"
+        type: string
+        default: "woarm64"
+      arch:
+        description: 'Architecture that should be built and tested'
+        required: false
+        default: 'aarch64'
+      tag:
+        description: 'Tag to use for the artifact'
+        required: true
+      gcc_module:
+        description: 'GCC module to test'
+        required: false
+        default: 'gcc-c'
+      gcc_test_filter:
+        description: 'GCC test filter'
+        required: false
+        default: 'compile.exp=103818.c'
+  workflow_call:
+    inputs:
+      packages_repository:
+        type: string
+      packages_branch:
+        type: string
+      arch:
+        type: string
+      tag:
+        type: string
+      gcc_module:
+        type: string
+      gcc_test_filter:
+        type: string
+
+jobs:
+  build-and-test-mingw-w64-gcc:
+    name: Build and test mingw-w64-gcc
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-gcc
+      packages_repository: ${{ inputs.packages_repository || 'Windows-on-ARM-Experiments/MINGW-packages' }}
+      packages_branch: ${{ inputs.packages_branch || 'woarm64' }}
+      runner_arch: ${{ inputs.arch || 'aarch64' }}
+      build_with_native: true
+      check: true
+      check_module: ${{ inputs.gcc_module || 'gcc-c' }}
+      check_filter: ${{ inputs.gcc_test_filter || '' }}
+
+  create-summary:
+    needs: build-and-test-mingw-w64-gcc
+    name: Create summary
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout mingw-woarm64-build repository
+        uses: actions/checkout@v4
+        with:
+          repository: Windows-on-ARM-Experiments/mingw-woarm64-build
+
+      - name: Download test results artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mingw-w64-gcc-test-results
+          path: ${{ github.workspace }}/test-results
+
+      - name: Create summary
+        run: |
+          .github/scripts/toolchain/create-gcc-summary.sh ${{ github.workspace }}/test-results >> $GITHUB_STEP_SUMMARY
