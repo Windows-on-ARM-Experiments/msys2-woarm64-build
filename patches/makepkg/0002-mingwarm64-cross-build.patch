@@ -1,0 +1,79 @@
+--- a/etc/makepkg_mingw.conf
++++ b/etc/makepkg_mingw.conf
+@@ -44,8 +44,14 @@
+   MINGW_CHOST="aarch64-w64-mingw32"
+   MINGW_PREFIX="/mingwarm64"
+   MINGW_PACKAGE_PREFIX="mingw-w64-aarch64"
+-  CC="gcc"
+-  CXX="g++"
++  CC="aarch64-w64-mingw32-gcc"
++  CXX="aarch64-w64-mingw32-g++"
++  RC="aarch64-w64-mingw32-windres"
++  WINDRES="aarch64-w64-mingw32-windres"
++  RANLIB="aarch64-w64-mingw32-ranlib"
++  STRIP="aarch64-w64-mingw32-strip"
++  OBJDUMP="aarch64-w64-mingw32-objdump"
++  OBJCOPY="aarch64-w64-mingw32-objcopy"
+   CPPFLAGS=
+   CFLAGS="-march=armv8-a -mtune=generic -O2 -pipe -Wp,-D_FORTIFY_SOURCE=2 -fstack-protector-strong -Wp,-D__USE_MINGW_ANSI_STDIO=1"
+   CXXFLAGS="$CFLAGS"
+--- a/etc/profile
++++ b/etc/profile
+@@ -49,7 +49,7 @@
+ case "${MSYSTEM}" in
+ MINGW*|CLANG*|UCRT*)
+   MINGW_MOUNT_POINT="${MINGW_PREFIX}"
+-  PATH="${MINGW_MOUNT_POINT}/bin:${MSYS2_PATH}${ORIGINAL_PATH:+:${ORIGINAL_PATH}}"
++  PATH="${MINGW_MOUNT_POINT}/bin:${MINGW_MOUNT_POINT}/${MSYSTEM_CHOST}/bin:/opt/bin:/opt/${MSYSTEM_CHOST}/bin:/opt/lib/gcc/${MSYSTEM_CHOST}/15.0.1:/opt/lib/bfd-plugins:/mingw64/bin:/mingw64/${MSYSTEM_CHOST}/bin:${MSYS2_PATH}${ORIGINAL_PATH:+:${ORIGINAL_PATH}}"
+   PKG_CONFIG_PATH="${MINGW_MOUNT_POINT}/lib/pkgconfig:${MINGW_MOUNT_POINT}/share/pkgconfig"
+   PKG_CONFIG_SYSTEM_INCLUDE_PATH="${MINGW_MOUNT_POINT}/include"
+   PKG_CONFIG_SYSTEM_LIBRARY_PATH="${MINGW_MOUNT_POINT}/lib"
+--- a/usr/share/makepkg/executable/strip.sh
++++ b/usr/share/makepkg/executable/strip.sh
+@@ -30,7 +30,7 @@
+ 
+ executable_strip() {
+ 	if check_option "strip" "y"; then
+-		if ! type -p strip >/dev/null; then
++		if ! type -p $STRIP >/dev/null; then
+ 			error "$(gettext "Cannot find the %s binary required for object file stripping.")" "strip"
+ 			return 1
+ 		fi
+--- a/usr/share/makepkg/buildenv.sh
++++ b/usr/share/makepkg/buildenv.sh
+@@ -42,5 +42,5 @@
+ 	done
+ 
+ 	# ensure all necessary build variables are exported
+-	export ${buildenv_vars[@]} CC CXX CHOST MAKEFLAGS
++	export ${buildenv_vars[@]} CC CXX RC WINDRES RANLIB SRIP OBJDUMP OBJCOPY CHOST MAKEFLAGS
+ }
+--- a/usr/share/makepkg/tidy/strip.sh
++++ b/usr/share/makepkg/tidy/strip.sh
+@@ -85,7 +85,7 @@
+ strip_file(){
+ 	local binary=$1; shift
+ 	local tempfile=$(mktemp "$binary.XXXXXX")
+-	if strip "$@" "$binary" -o "$tempfile"; then
++	if $STRIP "$@" "$binary" -o "$tempfile"; then
+ 		cat "$tempfile" > "$binary"
+ 	fi
+ 	rm -f "$tempfile"
+@@ -95,7 +95,7 @@
+ 	local binary=$1;
+ 
+ 	local tempfile=$(mktemp "$binary.XXXXXX")
+-	if strip -R .gnu.lto_* -R .gnu.debuglto_* -N __gnu_lto_v1 "$binary" -o "$tempfile"; then
++	if $STRIP -R .gnu.lto_* -R .gnu.debuglto_* -N __gnu_lto_v1 "$binary" -o "$tempfile"; then
+ 		cat "$tempfile" > "$binary"
+ 	fi
+ 	rm -f "$tempfile"
+@@ -176,7 +176,7 @@
+ 				case "${binary##*/}" in
+ 				*.dll|*.exe|*.sfx|*.so|*.so.[0-9]*|*.oct|*.cmxs) ;;
+ 				# make sure this isn't some oddly named DLL
+-				*)	if LANG=en_US.UTF-8 LC_ALL=C objdump -f "${binary}" | grep -Eq '^start address 0x(0000000[01])?00401[0-9a-e][0-9a-e]0'
++				*)	if LANG=en_US.UTF-8 LC_ALL=C $OBJDUMP -f "${binary}" | grep -Eq '^start address 0x(0000000[01])?00401[0-9a-e][0-9a-e]0'
+ 					then
+ 						mv "${binary}" "${binary}.exe"
+ 						binary+=.exe

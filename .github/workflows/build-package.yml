@@ -3,16 +3,13 @@ name: Build MSYS2 package
 on:
   workflow_call:
     inputs:
+      if:
+        description: "Condition allowing to skip all steps of the workflow job"
+        type: boolean
+        default: true
       package_name:
         description: "Package name to build"
         type: string
-      needs:
-        description: "Parent workflow job dependencies"
-        type: string
-      dependencies:
-        description: "Install additional dependencies"
-        type: string
-        default: ""
       packages_repository:
         description: "MSYS2 packages repository to build from"
         type: string
@@ -21,97 +18,147 @@ on:
         description: "MSYS2 packages branch to build from"
         type: string
         default: "woarm64"
-
-defaults:
-  run:
-    shell: msys2 {0}
+      runner_arch:
+        description: "Architecture to build on"
+        type: string
+        default: "x86_64"
+      build_with_native:
+        description: "Build with native MinGW toolchain"
+        type: boolean
+        default: false
+      needs:
+        description: "Parent workflow job dependencies"
+        type: string
+      dependencies:
+        description: "Install additional dependencies"
+        type: string
+        default: ""
 
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  FLAVOR: ${{ (inputs.runner_arch == 'aarch64') && (inputs.build_with_native && 'NATIVE_WITH_NATIVE' || 'NATIVE_WITH_CROSS') || 'CROSS' }}
+  CLEAN_BUILD: 1
 
 jobs:
   build:
-    name: Build ${{ inputs.package_name }}
-    runs-on: windows-latest
+    name: ${{ inputs.if && 'Build' || 'Skip'}} ${{ inputs.package_name }}
+    timeout-minutes: 720
+    runs-on: >-
+      ${{ fromJson(inputs.runner_arch == 'aarch64'
+        && '["Windows", "ARM64", "MSYS2"]'
+        || '["windows-latest"]') }}
+
+    defaults:
+     run:
+       shell: msys2 {0}
 
     steps:
-      - uses: msys2/setup-msys2@v2
+      - name: Kill hanging processes
+        if: inputs.if && inputs.runner_arch == 'aarch64'
+        shell: powershell
+        run: |
+          taskkill /F /FI 'MODULES eq msys-2.0.dll'
+          Set-Location "${{ github.workspace }}"
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path packages
+          exit 0
+
+      - uses: Windows-on-ARM-Experiments/setup-msys2@main
+        if: inputs.if
+        timeout-minutes: 10
         with:
-          msystem: ${{ contains(inputs.packages_repository, 'MINGW') && 'MINGW64' || 'MSYS' }}
+          msystem: >-
+            ${{ contains(inputs.packages_repository, 'MINGW')
+              && ((inputs.runner_arch == 'aarch64') && 'MINGWARM64' || 'MINGW64')
+              || 'MSYS' }}
+          path-type: minimal
           update: true
           cache: true
 
       - name: Checkout repository
+        if: inputs.if
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Checkout ${{ inputs.packages_repository }} repository
+        if: inputs.if
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.packages_repository }}
+          ref: ${{ ((inputs.runner_arch == 'aarch64') && !inputs.build_with_native) && format('{0}-cross', inputs.packages_branch) || inputs.packages_branch }}
+          sparse-checkout: ${{ inputs.package_name }}
+          path: ${{ github.workspace }}/packages
+
+      - name: Setup packages repository
+        if: inputs.if && inputs.runner_arch == 'aarch64'
         run: |
-          pacman -S --noconfirm \
-            git \
-            mingw-w64-x86_64-github-cli \
-            mingw-w64-x86_64-jq \
-            base-devel \
-            ${{ contains(inputs.packages_repository, 'MINGW') && 'mingw-w64-cross-gcc mingw-w64-x86_64-ccache' || ' ccache' }} \
-            ${{ inputs.dependencies }}
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-repository.sh
+
+      - name: Install dependencies
+        if: inputs.if
+        run: >-
+          `cygpath "${{ github.workspace }}"`/.github/scripts/install-dependencies.sh \
+            "git mingw-w64-x86_64-github-cli mingw-w64-x86_64-jq ${{ inputs.dependencies }}"
 
       - name: Download artifacts
-        if: ${{ inputs.needs }}
+        if: inputs.if && inputs.needs
         run: |
-          `cygpath "${{ github.workspace }}"`/.github/scripts/download-artifacts.sh ${{ github.run_id }} '${{ inputs.needs }}'
+          `cygpath "${{ github.workspace }}"`/.github/scripts/download-artifacts.sh \
+            ${{ github.run_id }} \
+            '${{ inputs.needs }}'
 
       - name: Install artifacts
-        if: ${{ inputs.needs }}
+        if: inputs.if && inputs.needs
         run: |
           `cygpath "${{ github.workspace }}"`/.github/scripts/install-artifacts.sh
 
       - name: Copy missing headers for mingw-w64-cross-mingwarm64-crt
-        if: ${{ inputs.package_name == 'mingw-w64-cross-mingwarm64-crt' }}
+        if: inputs.if && inputs.package_name == 'mingw-w64-cross-mingwarm64-crt'
         run: |
           `cygpath "${{ github.workspace }}"`/.github/scripts/pthread-headers-hack-before.sh
 
-      - name: Checkout ${{ inputs.packages_repository }} repository
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ inputs.packages_repository }}
-          ref: ${{ inputs.packages_branch }}
-          sparse-checkout: ${{ inputs.package_name }}
-          path: ${{ github.workspace }}/packages
+      - name: Setup MINGWARM64 environment
+        if: inputs.if && inputs.runner_arch == 'aarch64'
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-mingwarm64.sh
 
       - name: Enable Ccache
+        if: inputs.if
         id: enable-ccache
         run: |
           `cygpath "${{ github.workspace }}"`/.github/scripts/enable-ccache.sh
 
       - name: Restore Ccache
-        uses:  actions/cache/restore@v4
+        if: inputs.if
+        uses: actions/cache/restore@v4
         with:
           path: ${{ github.workspace }}/ccache
-          key: main-ccache-${{ steps.enable-ccache.outputs.timestamp }}
-          restore-keys: main-ccache-
+          key: ${{ inputs.package_name }}-ccache-${{ steps.enable-ccache.outputs.timestamp }}
+          restore-keys: ${{ inputs.package_name }}-
 
       - name: Build ${{ inputs.package_name }}
+        if: inputs.if
+        timeout-minutes: 720
         working-directory: ${{ github.workspace }}/packages/${{ inputs.package_name }}
         run: |
-          ccache -svv  || true
-          `cygpath "${{ github.workspace }}"`/.github/scripts/build-package.sh ${{ inputs.packages_repository }}
-          ccache -svv || true
+          `cygpath "${{ github.workspace }}"`/.github/scripts/build-package.sh \
+            ${{ inputs.packages_repository }}
 
       - name: Save Ccache
-        if: always()
-        uses:  actions/cache/save@v4
+        if: inputs.if && always()
+        uses: actions/cache/save@v4
         with:
           path: ${{ github.workspace }}/ccache
-          key: main-ccache-${{ steps.enable-ccache.outputs.timestamp }}
+          key: ${{ inputs.package_name }}-ccache-${{ steps.enable-ccache.outputs.timestamp }}
 
       - name: Upload ${{ inputs.package_name }}
+        if: inputs.if
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.package_name }}
-          retention-days: 1
+          retention-days: 3
           path: ${{ github.workspace }}/packages/${{ inputs.package_name }}/*.pkg.tar.zst
 
       - name: Upload build folder
-        if: failure()
+        if: inputs.if && failure()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.package_name }}-build

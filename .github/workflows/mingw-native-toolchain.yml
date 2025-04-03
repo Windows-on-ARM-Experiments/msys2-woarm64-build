@@ -1,0 +1,468 @@
+name: Build MinGW native toolchain
+
+on:
+  workflow_dispatch:
+    inputs:
+      mingw_packages_branch:
+        description: "MINGW-packages branch to build"
+        type: string
+        required: false
+        default: "woarm64"
+      build_with_native:
+        description: "Build with native MinGW toolchain"
+        type: choice
+        options:
+          - true
+          - false
+        required: false
+        default: 'true'
+  workflow_call:
+    inputs:
+      mingw_packages_branch:
+        description: "MINGW-packages branch to build"
+        type: string
+        default: "woarm64"
+      build_with_native:
+        description: "Build with native MinGW toolchain"
+        type: string
+        required: false
+        default: 'true'
+    outputs:
+      artifacts:
+        value: ${{ toJson(jobs) }}
+
+jobs:
+  mingw-w64-libtool:
+    uses: ./.github/workflows/build-package.yml
+    with:
+      if: ${{ inputs.build_with_native != 'false' }}
+      package_name: mingw-w64-libtool
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+
+  mingw-w64-ninja:
+    uses: ./.github/workflows/build-package.yml
+    with:
+      if: ${{ inputs.build_with_native != 'false' }}
+      package_name: mingw-w64-ninja
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+
+  mingw-w64-pkgconf:
+    needs: [
+      mingw-w64-ninja
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      if: ${{ inputs.build_with_native != 'false' }}
+      package_name: mingw-w64-pkgconf
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-autotools:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      if: ${{ inputs.build_with_native != 'false' }}
+      package_name: mingw-w64-autotools
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  autotools-wrappers:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      if: ${{ inputs.build_with_native != 'false' }}
+      package_name: autotools-wrappers
+      packages_repository: Windows-on-ARM-Experiments/MSYS2-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-gperf:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      if: ${{ inputs.build_with_native != 'false' }}
+      package_name: mingw-w64-gperf
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-libiconv:
+    uses: ./.github/workflows/build-package.yml
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-gperf
+    ]
+    with:
+      package_name: mingw-w64-libiconv
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-libtre:
+    uses: ./.github/workflows/build-package.yml
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools
+    ]
+    with:
+      package_name: mingw-w64-libtre
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-libsystre:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-libtre
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-libsystre
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-gettext:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-gperf,
+      mingw-w64-libiconv,
+      mingw-w64-libtre,
+      mingw-w64-libsystre
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-gettext
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-ncurses:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-gperf,
+      mingw-w64-libiconv,
+      mingw-w64-libtre,
+      mingw-w64-libsystre,
+      mingw-w64-gettext
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-ncurses
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-bzip2:
+    uses: ./.github/workflows/build-package.yml
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools
+    ]
+    with:
+      package_name: mingw-w64-bzip2
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-zlib:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-bzip2
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-zlib
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-zstd:
+    needs: [
+      mingw-w64-ninja
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-zstd
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-gmp:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-gmp
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-mpfr:
+    uses: ./.github/workflows/build-package.yml
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-gmp
+    ]
+    with:
+      package_name: mingw-w64-mpfr
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-isl:
+    uses: ./.github/workflows/build-package.yml
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-gmp
+    ]
+    with:
+      package_name: mingw-w64-isl
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-mpc:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-gmp,
+      mingw-w64-mpfr
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-mpc
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-libmangle-git:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      if: ${{ inputs.build_with_native != 'false' }}
+      package_name: mingw-w64-libmangle-git
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-tools-git:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-libmangle-git
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      if: ${{ inputs.build_with_native != 'false' }}
+      package_name: mingw-w64-tools-git
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-headers-git:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-libmangle-git,
+      mingw-w64-tools-git
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-headers-git
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-crt-git:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-headers-git
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-crt-git
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-winpthreads-git:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-headers-git,
+      mingw-w64-crt-git
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-winpthreads-git
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-binutils:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-gperf,
+      mingw-w64-libiconv,
+      mingw-w64-libtre,
+      mingw-w64-libsystre,
+      mingw-w64-ncurses,
+      mingw-w64-gettext,
+      mingw-w64-headers-git,
+      mingw-w64-winpthreads-git,
+      mingw-w64-bzip2,
+      mingw-w64-zlib,
+      mingw-w64-zstd,
+      mingw-w64-gmp,
+      mingw-w64-mpfr,
+      mingw-w64-isl
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-binutils
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-windows-default-manifest:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-windows-default-manifest
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}
+
+  mingw-w64-gcc:
+    needs: [
+      mingw-w64-libtool,
+      mingw-w64-pkgconf,
+      mingw-w64-autotools,
+      mingw-w64-gperf,
+      mingw-w64-libiconv,
+      mingw-w64-libtre,
+      mingw-w64-libsystre,
+      mingw-w64-ncurses,
+      mingw-w64-gettext,
+      mingw-w64-headers-git,
+      mingw-w64-winpthreads-git,
+      mingw-w64-bzip2,
+      mingw-w64-zlib,
+      mingw-w64-zstd,
+      mingw-w64-gmp,
+      mingw-w64-mpfr,
+      mingw-w64-isl,
+      mingw-w64-binutils,
+      mingw-w64-mpc,
+      mingw-w64-crt-git,
+      mingw-w64-windows-default-manifest
+    ]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-gcc
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      runner_arch: aarch64
+      build_with_native: ${{ inputs.build_with_native != 'false' }}
+      needs: ${{ toJson(needs) }}

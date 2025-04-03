@@ -1,0 +1,21 @@
+name: Build MinGW FFmpeg using MSYS2 toolchain
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      mingw_packages_branch:
+        description: "MINGW-packages branch to build"
+        type: string
+        required: false
+        default: "four-packages"
+
+jobs:
+  mingw-w64-ffmpeg:
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_name: mingw-w64-ffmpeg
+      packages_repository: Windows-on-ARM-Experiments/MINGW-packages
+      packages_branch: ${{ github.event.inputs.mingw_packages_branch || 'four-packages' }}
+      runner_arch: aarch64
+      build_with_native: true

@@ -1,7 +1,9 @@
 #!/bin/bash
 
-set -e # exit on error
-set -x # echo on
-set -o pipefail # fail of any command in pipeline is an error
+source `dirname ${BASH_SOURCE[0]}`/../../config.sh
 
-pacman -U --noconfirm *.pkg.tar.zst
+if [[ $(ls *.pkg.tar.zst 2>/dev/null) != "" ]]; then
+    pacman -U --noconfirm *.pkg.tar.zst
+else
+    echo "No package file found. Skipping installation."
+fi

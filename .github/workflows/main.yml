@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
   workflow_dispatch:
     inputs:
       msys2_packages_branch:
@@ -12,17 +11,58 @@ on:
         type: string
         required: false
         default: "woarm64"
+      mingw_packages_branch:
+        description: "MINGW-packages branch to build"
+        type: string
+        required: false
+        default: "woarm64"
+      build_cross:
+        description: "Build cross-compilation MinGW toolchain"
+        type: choice
+        options:
+          - true
+          - false
+        required: false
+        default: 'true'
+      build_native:
+        description: "Build native MinGW toolchain"
+        type: choice
+        options:
+          - true
+          - false
+        required: false
+        default: 'true'
+      build_native_with_native:
+        description: "Build native MinGW toolchain with native MinGW toolchain"
+        type: choice
+        options:
+          - true
+          - false
+        required: false
+        default: 'true'
 
 jobs:
   mingw-cross-toolchain:
+    if: inputs.build_cross != 'false'
     name: MinGW cross-compilation toolchain
     uses: ./.github/workflows/mingw-cross-toolchain.yml
     with:
       msys2_packages_branch: ${{ inputs.msys2_packages_branch || 'woarm64' }}
 
+  mingw-native-toolchain:
+    if: inputs.build_native != 'false'
+    name: MinGW native toolchain
+    uses: ./.github/workflows/mingw-native-toolchain.yml
+    with:
+      mingw_packages_branch: ${{ inputs.mingw_packages_branch || 'woarm64' }}
+      build_with_native: ${{ inputs.build_native_with_native || 'true' }}
+
   repository:
     name: Create MSYS2 repository
-    needs: mingw-cross-toolchain
+    needs: [
+      mingw-cross-toolchain,
+      mingw-native-toolchain
+    ]
     runs-on: windows-latest
 
     defaults:
@@ -34,9 +74,12 @@ jobs:
 
     steps:
       - uses: msys2/setup-msys2@v2
+        timeout-minutes: 10
         with:
           msystem: MSYS
+          path-type: minimal
           update: true
+          cache: true
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,32 +93,28 @@ jobs:
 
       - name: Download artifacts
         run: |
-          `cygpath "${{ github.workspace }}"`/.github/scripts/download-artifacts.sh ${{ github.run_id }} \
-            '${{ needs.mingw-cross-toolchain.outputs.artifacts }}'
+          `cygpath "${{ github.workspace }}"`/.github/scripts/download-artifacts.sh \
+            ${{ github.run_id }} \
+            '${{ needs.mingw-cross-toolchain.outputs.artifacts }}' \
+            '${{ needs.mingw-native-toolchain.outputs.artifacts }}'
   
-      - name: Setup MSYS2 packages repository
+      - name: Create MSYS2 packages repository
         run: |
-          mkdir aarch64
-          mkdir x86_64
-
-          mv -f *-x86_64.pkg.tar.zst x86_64/
-
-          cd x86_64
-          repo-add woarm64.db.tar.gz *.pkg.tar.zst
+          `cygpath "${{ github.workspace }}"`/.github/scripts/create-repository.sh
 
       - name: Create index.html
         run: |
-          echo "<!DOCTYPE html><head></head><body></body>" > index.html
+          echo "<!DOCTYPE html><head></head><body></body>" > repository/index.html
 
       - name: Upload woarm64-msys2-repository
         uses: actions/upload-pages-artifact@v3
         with:
           name: woarm64-msys2-repository
           retention-days: 1
-          path: "."
+          path: repository
 
   deploy:
-    if: github.ref == 'refs/heads/main'
+    #if: github.ref == 'refs/heads/main'
     name: Deploy MSYS2 repository
     needs: repository
     runs-on: ubuntu-latest
