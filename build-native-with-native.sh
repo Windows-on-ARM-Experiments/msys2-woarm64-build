@@ -31,6 +31,12 @@ function build_package () {
 .github/scripts/install-dependencies.sh
 .github/scripts/enable-ccache.sh
 
+build_package mingw-w64-libtool
+build_package mingw-w64-ninja
+build_package mingw-w64-pkgconf
+build_package mingw-w64-autotools
+build_package autotools-wrappers MSYS2
+build_package mingw-w64-gperf
 build_package mingw-w64-libiconv
 build_package mingw-w64-libtre
 build_package mingw-w64-libsystre
@@ -44,6 +50,8 @@ build_package mingw-w64-mpfr
 build_package mingw-w64-isl
 build_package mingw-w64-mpc
 
+build_package mingw-w64-libmangle-git
+build_package mingw-w64-tools-git
 build_package mingw-w64-headers-git
 build_package mingw-w64-crt-git
 build_package mingw-w64-winpthreads-git

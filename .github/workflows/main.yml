@@ -115,7 +115,7 @@ jobs:
           path: repository
 
   deploy:
-    if: github.ref == 'refs/heads/main'
+    #if: github.ref == 'refs/heads/main'
     name: Deploy MSYS2 repository
     needs: repository
     runs-on: ubuntu-latest
