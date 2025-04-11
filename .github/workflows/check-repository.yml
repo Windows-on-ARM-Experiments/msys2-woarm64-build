@@ -5,18 +5,24 @@ on:
   workflow_call:
 
 jobs:
-  build:
+  build-cross:
     runs-on: windows-latest
 
     defaults:
       run:
         shell: msys2 {0}
 
+    env:
+      FLAVOR: CROSS
+
     steps:
       - uses: msys2/setup-msys2@v2
+        timeout-minutes: 10
         with:
           msystem: MSYS
+          path-type: minimal
           update: true
+          cache: true
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,10 +31,10 @@ jobs:
         run: |
           `cygpath "${{ github.workspace }}"`/.github/scripts/setup-repository.sh
 
-      - name: Install toolchain
+      - name: Install cross toolchain
         run: |
-          pacman -S mingw-w64-cross-mingwarm64-gcc --noconfirm
-          pacman -S mingw-w64-aarch64-cc --noconfirm
+          pacman -S --noconfirm mingw-w64-cross-mingwarm64-gcc
+          pacman -S --noconfirm --needed mingw-w64-aarch64-cc
 
       - name: Build hello-world.exe
         run: |
@@ -37,21 +43,88 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: hello-world
+          name: hello-world-cross
           path: hello-world.exe
 
-  test:
-    needs: [build]
+  test-cross:
+    needs: [build-cross]
     runs-on: [Windows, GCC, ARM64]
 
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: hello-world
+          name: hello-world-cross
           path: ${{ github.workspace }}\artifacts
 
       - name: Run hello-world.exe
         run: |
-          ls ${{ github.workspace }}\artifacts
+          ${{ github.workspace }}\artifacts\hello-world.exe
+
+  build-native:
+    runs-on: ["Windows", "ARM64", "MSYS2"]
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    env:
+      FLAVOR: NATIVE_WITH_NATIVE
+
+    steps:
+      - name: Kill hanging processes
+        shell: powershell
+        run: |
+          taskkill /F /FI 'MODULES eq msys-2.0.dll'
+          Set-Location "${{ github.workspace }}"
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path packages
+          exit 0
+
+      - uses: Windows-on-ARM-Experiments/setup-msys2@main
+        timeout-minutes: 10
+        with:
+          msystem: MINGWARM64
+          path-type: minimal
+          update: true
+          cache: true
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup packages repository
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/setup-repository.sh
+
+      - name: Install native toolchain
+        run: |
+          pacman -S --noconfirm mingw-w64-aarch64-gcc
+          pacman -S --noconfirm --needed mingw-w64-aarch64-cc
+
+      - name: Setup MINGWARM64 environment
+        run: |
+            `cygpath "${{ github.workspace }}"`/.github/scripts/setup-mingwarm64.sh
+
+      - name: Build hello-world.exe
+        run: |
+          `cygpath "${{ github.workspace }}"`/.github/scripts/build-hello-world.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hello-world-native
+          path: hello-world.exe
+         
+  test-native:
+    needs: [build-native]
+    runs-on: [Windows, GCC, ARM64]
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: hello-world-native
+          path: ${{ github.workspace }}\artifacts
+
+      - name: Run hello-world.exe
+        run: |
           ${{ github.workspace }}\artifacts\hello-world.exe

@@ -1,0 +1,53 @@
+--- a/etc/makepkg_mingw.conf
++++ b/etc/makepkg_mingw.conf
+@@ -33,7 +33,20 @@
+ #########################################################################
+ #
+
+-if [[ "$MSYSTEM" == "MINGW64" ]]; then
++if [[ "$MSYSTEM" == "MINGWARM64" ]]; then
++  CARCH="aarch64"
++  CHOST="aarch64-w64-mingw32"
++  MINGW_CHOST="aarch64-w64-mingw32"
++  MINGW_PREFIX="/mingwarm64"
++  MINGW_PACKAGE_PREFIX="mingw-w64-aarch64"
++  CC="gcc"
++  CXX="g++"
++  CPPFLAGS=
++  CFLAGS="-march=armv8-a -mtune=generic -O2 -pipe -Wp,-D_FORTIFY_SOURCE=2 -fstack-protector-strong -Wp,-D__USE_MINGW_ANSI_STDIO=1"
++  CXXFLAGS="$CFLAGS -static-libstdc++"
++  LDFLAGS=""
++  RUSTFLAGS="-Cforce-frame-pointers=yes"
++elif [[ "$MSYSTEM" == "MINGW64" ]]; then
+   CARCH="x86_64"
+   CHOST="x86_64-w64-mingw32"
+   MINGW_CHOST="x86_64-w64-mingw32"
+--- a/etc/msystem
++++ b/etc/msystem
+@@ -39,6 +39,15 @@
+         MINGW_PACKAGE_PREFIX="mingw-w64-${MSYSTEM_CARCH}"
+         export MSYSTEM_PREFIX MSYSTEM_CARCH MSYSTEM_CHOST MINGW_CHOST MINGW_PREFIX MINGW_PACKAGE_PREFIX
+         ;;
++    MINGWARM64)
++        MSYSTEM_PREFIX='/mingwarm64'
++        MSYSTEM_CARCH='aarch64'
++        MSYSTEM_CHOST='aarch64-w64-mingw32'
++        MINGW_CHOST="${MSYSTEM_CHOST}"
++        MINGW_PREFIX="${MSYSTEM_PREFIX}"
++        MINGW_PACKAGE_PREFIX="mingw-w64-${MSYSTEM_CARCH}"
++        export MSYSTEM_PREFIX MSYSTEM_CARCH MSYSTEM_CHOST MINGW_CHOST MINGW_PREFIX MINGW_PACKAGE_PREFIX
++        ;;
+     CLANG64)
+         MSYSTEM_PREFIX='/clang64'
+         MSYSTEM_CARCH='x86_64'
+--- a/usr/bin/makepkg-mingw
++++ b/usr/bin/makepkg-mingw
+@@ -84,7 +84,7 @@
+ fi
+ 
+ # Validate or set MINGW_ARCH
+-MINGW_ARCH_ALLOWED=('mingw32' 'mingw64' 'clang64' 'clangarm64' 'ucrt64')
++MINGW_ARCH_ALLOWED=('mingw32' 'mingw64' 'mingwarm64' 'clang64' 'clangarm64' 'ucrt64')
+ MINGW_ARCH="${MINGW_ARCH,,}"
+ if [[ -z "$MINGW_ARCH" ]]; then
+   # In case MINGW_ARCH isn't set we default to MSYSTEM, or error out

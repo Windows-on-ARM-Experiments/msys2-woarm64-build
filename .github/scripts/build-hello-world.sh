@@ -1,8 +1,6 @@
 #!/bin/bash
 
-set -e # exit on error
-set -x # echo on
-set -o pipefail # fail of any command in pipeline is an error
+source `dirname ${BASH_SOURCE[0]}`/../../config.sh
 
 # Sanity check of the GCC binary and its version.
 aarch64-w64-mingw32-gcc --version
