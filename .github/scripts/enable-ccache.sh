@@ -2,6 +2,8 @@
 
 source `dirname ${BASH_SOURCE[0]}`/../../config.sh
 
+PACKAGE_REPOSITORY=$1
+
 DIR="`dirname ${BASH_SOURCE[0]}`/../.."
 DIR=`realpath $DIR`
 CCACHE_DIR=$DIR/ccache
@@ -32,7 +34,11 @@ pushd /
   echo "::endgroup::"
 popd
 
-pacman -S --noconfirm ccache
+if [[ "$PACKAGE_REPOSITORY" == *MINGW* ]]; then
+  pacman -S --noconfirm mingw-w64-clang-aarch64-ccache
+else
+  pacman -S --noconfirm ccache
+fi
 
 pushd /usr/lib/ccache/bin
   echo "::group::Add aarch64 toolchain to ccache"
@@ -40,8 +46,5 @@ pushd /usr/lib/ccache/bin
     ln -sf /usr/bin/ccache aarch64-w64-mingw32-c++
     ln -sf /usr/bin/ccache aarch64-w64-mingw32-g++
     ln -sf /usr/bin/ccache aarch64-w64-mingw32-gcc
-    if [[ "$FLAVOR" = "CROSS" ]]; then
-        ln -sf /usr/bin/true makeinfo
-    fi
   echo "::endgroup::"
 popd
